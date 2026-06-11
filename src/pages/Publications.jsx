@@ -7,7 +7,7 @@ import {
   deletePublication,
 } from "@/services/publicationService";
 
-import { getClubs } from "@/services/clubService";
+import { getTeams } from "@/services/teamService";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/firebase/config";
 import { createNotification } from "@/services/notificationService";
@@ -49,6 +49,36 @@ export default function Publications() {
   const [profileDialog, setProfileDialog] = useState(false);
   const [displayName, setDisplayName] = useState(user?.full_name || "");
   const fileRef = useRef(null);
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-24">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center">
+          <MessageCircle className="w-12 h-12 text-primary mx-auto mb-4" />
+
+          <h1 className="font-display text-3xl font-bold">Muro de Clubes</h1>
+
+          <p className="text-muted-foreground mt-3">
+            Debés crearte un usuario o iniciar sesión para ver el muro de
+            publicaciones.
+          </p>
+
+          <div className="flex flex-col sm:flex-row justify-center gap-3 mt-6">
+            <a href="/login">
+              <Button className="bg-primary w-full sm:w-auto">
+                Iniciar sesión
+              </Button>
+            </a>
+
+            <a href="/register">
+              <Button variant="outline" className="w-full sm:w-auto">
+                Crear usuario
+              </Button>
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { data: publications, isLoading } = useQuery({
     queryKey: ["publications"],
@@ -56,9 +86,9 @@ export default function Publications() {
     initialData: [],
   });
 
-  const { data: clubs } = useQuery({
-    queryKey: ["clubs"],
-    queryFn: getClubs,
+  const { data: teams = [] } = useQuery({
+    queryKey: ["teams"],
+    queryFn: getTeams,
     initialData: [],
   });
 
@@ -86,15 +116,15 @@ export default function Publications() {
   };
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      const club = clubs.find((c) => c.id === user?.club_id);
+      const team = teams.find((t) => t.id === user?.team_id);
 
       const payload = {
         ...data,
-        club_id: user?.club_id || "",
-        club_name: club?.name || "",
-        club_logo_url: club?.logo_url || "",
+        club_id: user?.team_id || "",
+        club_name: team?.name || "",
+        club_logo_url: team?.logo_url || "",
         user_id: user?.id,
-        user_name: user?.full_name || user?.email || "Usuario",
+        user_name: team?.name || user?.full_name || user?.email || "Usuario",
         likes_count: 0,
         liked_by: [],
       };
@@ -375,7 +405,7 @@ export default function Publications() {
                       />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-display font-bold text-primary">
-                        {(pub.club_name || "C")[0]}
+                        {(pub.user_name || "U")[0]}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">

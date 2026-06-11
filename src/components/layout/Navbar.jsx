@@ -20,7 +20,10 @@ export default function Navbar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
+  const isAdmin = isAuthenticated && user?.role === "admin";
   const isActive = (path) => location.pathname === path;
+
+  const userName = user?.full_name || "Usuario";
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/35 backdrop-blur-2xl border-b border-white/5">
@@ -42,6 +45,7 @@ export default function Navbar() {
             </div>
           </Link>
 
+          {/* Desktop */}
           <div className="hidden lg:flex items-center gap-1">
             {NAV_LINKS.map((link) => (
               <Link
@@ -56,8 +60,22 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+
+            {isAdmin && (
+              <Link
+                to="/admin/usuarios"
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  isActive("/admin/usuarios")
+                    ? "text-white bg-primary/20 border border-primary/40 shadow-[0_0_20px_rgba(255,120,0,.3)]"
+                    : "text-white/60 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                Usuarios
+              </Link>
+            )}
           </div>
 
+          {/* Desktop Auth */}
           <div className="hidden lg:flex items-center gap-3">
             {isAuthenticated && <NotificationBell />}
 
@@ -65,13 +83,20 @@ export default function Navbar() {
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/30 border border-white/5 backdrop-blur-xl">
                   <User className="w-4 h-4 text-primary" />
-                  <span className="text-sm text-white max-w-40 truncate">
-                    {user?.full_name || user?.email}
+
+                  <span className="text-sm text-white truncate max-w-[160px]">
+                    {userName}
                   </span>
 
                   {user?.role === "admin" && (
                     <span className="text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded">
                       ADMIN
+                    </span>
+                  )}
+
+                  {user?.role === "club_responsible" && (
+                    <span className="text-[10px] font-bold bg-blue-500 text-white px-2 py-0.5 rounded">
+                      CLUB
                     </span>
                   )}
                 </div>
@@ -95,12 +120,17 @@ export default function Navbar() {
             )}
           </div>
 
+          {/* Mobile */}
           <div className="flex items-center gap-1 lg:hidden">
             {isAuthenticated && <NotificationBell />}
 
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/10"
+                >
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
@@ -143,6 +173,20 @@ export default function Navbar() {
                         {link.label}
                       </Link>
                     ))}
+
+                    {isAdmin && (
+                      <Link
+                        to="/admin/usuarios"
+                        onClick={() => setOpen(false)}
+                        className={`flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                          isActive("/admin/usuarios")
+                            ? "text-white bg-primary/20 border border-primary/30"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        Usuarios
+                      </Link>
+                    )}
                   </div>
 
                   <div className="p-4 border-t border-border">
@@ -150,9 +194,16 @@ export default function Navbar() {
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted">
                           <User className="w-4 h-4 text-primary" />
+
                           <span className="text-sm truncate">
-                            {user?.full_name || user?.email}
+                            {userName}
                           </span>
+
+                          {user?.role === "admin" && (
+                            <span className="text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded">
+                              ADMIN
+                            </span>
+                          )}
                         </div>
 
                         <Button

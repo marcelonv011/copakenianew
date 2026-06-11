@@ -9,6 +9,7 @@ import TournamentDetail from "@/pages/TournamentDetail";
 import Champions from "@/pages/Champions";
 import Sponsors from "@/pages/Sponsors";
 import Publications from "@/pages/Publications";
+import AdminUsers from "@/pages/AdminUsers";
 
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -35,6 +36,7 @@ export default function AppRoutes() {
         <Route path="/campeones" element={<Champions />} />
         <Route path="/publicaciones" element={<Publications />} />
         <Route path="/sponsors" element={<Sponsors />} />
+        <Route path="/admin/usuarios" element={<AdminUsers />} />
       </Route>
 
       {/* 404 */}
