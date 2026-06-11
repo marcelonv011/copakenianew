@@ -2,11 +2,34 @@ import React, { useState, useEffect, useRef } from "react";
 import { Bell } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  doc,
+  updateDoc,
+  writeBatch,
+} from "firebase/firestore";
+import { db } from "@/firebase/config";
 
 const TYPE_LABELS = {
-  resultado: { emoji: "⚽", label: "Resultado", color: "text-green-400" },
-  horario: { emoji: "📅", label: "Horario", color: "text-blue-400" },
-  general: { emoji: "🔔", label: "Aviso", color: "text-primary" },
+  publicacion: {
+    emoji: "📸",
+    label: "Publicación",
+    color: "text-primary",
+  },
+  like: {
+    emoji: "❤️",
+    label: "Me gusta",
+    color: "text-red-400",
+  },
+  general: {
+    emoji: "🔔",
+    label: "Aviso",
+    color: "text-primary",
+  },
 };
 
 export default function NotificationBell() {
@@ -18,18 +41,32 @@ export default function NotificationBell() {
   const panelRef = useRef(null);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user?.id) {
+      setNotifications([]);
+      return;
+    }
 
-    // Más adelante acá cargaremos desde Firebase
-    setNotifications([]);
-  }, [isAuthenticated]);
+    const q = query(
+      collection(db, "notifications"),
+      where("user_id", "==", user.id),
+      orderBy("created_date", "desc"),
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((docItem) => ({
+        id: docItem.id,
+        ...docItem.data(),
+      }));
+
+      setNotifications(data);
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, user?.id]);
 
   useEffect(() => {
     const handler = (e) => {
-      if (
-        panelRef.current &&
-        !panelRef.current.contains(e.target)
-      ) {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
         setOpen(false);
       }
     };
@@ -37,34 +74,42 @@ export default function NotificationBell() {
     document.addEventListener("mousedown", handler);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handler
-      );
+      document.removeEventListener("mousedown", handler);
     };
   }, []);
 
-  const unread = notifications.filter(
-    (n) => !n.read
-  ).length;
+  const unread = notifications.filter((n) => !n.read).length;
 
   const markAllRead = async () => {
+    const unreadNotifications = notifications.filter((n) => !n.read);
+
+    if (!unreadNotifications.length) return;
+
     setNotifications((prev) =>
       prev.map((n) => ({
         ...n,
         read: true,
-      }))
+      })),
     );
+
+    const batch = writeBatch(db);
+
+    unreadNotifications.forEach((n) => {
+      const ref = doc(db, "notifications", n.id);
+      batch.update(ref, { read: true });
+    });
+
+    await batch.commit();
   };
 
   const markRead = async (notification) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === notification.id
-          ? { ...n, read: true }
-          : n
-      )
-    );
+    if (notification.read) return;
+
+    const ref = doc(db, "notifications", notification.id);
+
+    await updateDoc(ref, {
+      read: true,
+    });
   };
 
   if (!isAuthenticated) return null;
@@ -74,10 +119,6 @@ export default function NotificationBell() {
       <button
         onClick={() => {
           setOpen((v) => !v);
-
-          if (!open && unread > 0) {
-            markAllRead();
-          }
         }}
         className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       >
@@ -136,24 +177,18 @@ export default function NotificationBell() {
                 </div>
               ) : (
                 notifications.map((n) => {
-                  const typeInfo =
-                    TYPE_LABELS[n.type] ||
-                    TYPE_LABELS.general;
+                  const typeInfo = TYPE_LABELS[n.type] || TYPE_LABELS.general;
 
                   return (
                     <div
                       key={n.id}
                       onClick={() => markRead(n)}
                       className={`px-4 py-3 border-b border-border/50 cursor-pointer transition-colors hover:bg-muted/30 ${
-                        !n.read
-                          ? "bg-primary/5"
-                          : ""
+                        !n.read ? "bg-primary/5" : ""
                       }`}
                     >
                       <div className="flex items-start gap-2.5">
-                        <span className="text-lg mt-0.5">
-                          {typeInfo.emoji}
-                        </span>
+                        <span className="text-lg mt-0.5">{typeInfo.emoji}</span>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 mb-0.5">
@@ -169,6 +204,14 @@ export default function NotificationBell() {
                           <p className="text-xs text-muted-foreground leading-relaxed">
                             {n.message}
                           </p>
+
+                          {n.created_date && (
+                            <p className="text-[10px] text-muted-foreground/60 mt-1">
+                              {new Date(n.created_date).toLocaleDateString(
+                                "es-AR",
+                              )}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

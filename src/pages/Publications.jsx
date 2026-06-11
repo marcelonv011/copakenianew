@@ -8,11 +8,14 @@ import {
 } from "@/services/publicationService";
 
 import { getClubs } from "@/services/clubService";
-
-
+import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { db } from "@/firebase/config";
+import { createNotification } from "@/services/notificationService";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +29,7 @@ import {
   ImagePlus,
   MessageCircle,
   Send,
+  UserPen,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
@@ -42,6 +46,8 @@ export default function Publications() {
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [profileDialog, setProfileDialog] = useState(false);
+  const [displayName, setDisplayName] = useState(user?.full_name || "");
   const fileRef = useRef(null);
 
   const { data: publications, isLoading } = useQuery({
@@ -56,24 +62,74 @@ export default function Publications() {
     initialData: [],
   });
 
+  const sendPublicationNotifications = async (publicationData) => {
+    const usersSnapshot = await getDocs(collection(db, "users"));
+
+    const users = usersSnapshot.docs.map((docItem) => ({
+      id: docItem.id,
+      ...docItem.data(),
+    }));
+
+    await Promise.all(
+      users
+        .filter((u) => u.id !== user?.id)
+        .map((u) =>
+          createNotification({
+            user_id: u.id,
+            type: "publicacion",
+            title: "Nueva publicación en el muro",
+            message: `${publicationData.user_name || "Alguien"} subió una foto al muro.`,
+            publication_id: publicationData.id,
+          }),
+        ),
+    );
+  };
   const createMutation = useMutation({
     mutationFn: async (data) => {
       const club = clubs.find((c) => c.id === user?.club_id);
-      return createPublication({
+
+      const payload = {
         ...data,
         club_id: user?.club_id || "",
-        club_name: club?.name || "Copa Kenia",
+        club_name: club?.name || "",
         club_logo_url: club?.logo_url || "",
-        user_name: user?.full_name || user?.email || "Admin",
+        user_id: user?.id,
+        user_name: user?.full_name || user?.email || "Usuario",
         likes_count: 0,
         liked_by: [],
+      };
+
+      const createdPublication = await createPublication(payload);
+
+      await sendPublicationNotifications({
+        ...payload,
+        id: createdPublication.id,
       });
+
+      return createdPublication;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["publications"] });
       setDialogOpen(false);
       setDescription("");
       setImageUrl("");
+    },
+  });
+  const updateProfileMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) return;
+
+      const userRef = doc(db, "users", user.id);
+
+      await updateDoc(userRef, {
+        full_name: displayName,
+      });
+
+      return true;
+    },
+    onSuccess: () => {
+      setProfileDialog(false);
+      window.location.reload();
     },
   });
 
@@ -87,65 +143,79 @@ export default function Publications() {
     mutationFn: async (pub) => {
       const likedBy = pub.liked_by || [];
       const alreadyLiked = likedBy.includes(user?.id);
+
       const newLikedBy = alreadyLiked
         ? likedBy.filter((id) => id !== user?.id)
         : [...likedBy, user?.id];
-      return updatePublication(pub.id, {
+
+      await updatePublication(pub.id, {
         liked_by: newLikedBy,
         likes_count: newLikedBy.length,
       });
+
+      if (!alreadyLiked && pub.user_id && pub.user_id !== user?.id) {
+        await createNotification({
+          user_id: pub.user_id,
+          type: "like",
+          title: "Le dieron MG a tu foto",
+          message: `${user?.full_name || user?.email || "Alguien"} le dio MG a tu publicación.`,
+          publication_id: pub.id,
+        });
+      }
+
+      return true;
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["publications"] }),
   });
 
   const handleUploadImage = async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  if (!file.type.startsWith("image/")) {
-    alert("Seleccioná una imagen válida");
-    return;
-  }
-
-  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-  if (!cloudName || !uploadPreset) {
-    alert("Faltan las variables de Cloudinary en el archivo .env");
-    return;
-  }
-
-  try {
-    setUploading(true);
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", uploadPreset);
-    formData.append("folder", "copa-kenia/publicaciones");
-
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error?.message || "Error al subir imagen");
+    if (!file.type.startsWith("image/")) {
+      alert("Seleccioná una imagen válida");
+      return;
     }
 
-    setImageUrl(data.secure_url);
-  } catch (error) {
-    console.error("Error al subir imagen:", error);
-    alert("No se pudo subir la imagen");
-  } finally {
-    setUploading(false);
-  }
-};
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
+      alert("Faltan las variables de Cloudinary en el archivo .env");
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", uploadPreset);
+      formData.append("folder", "copa-kenia/publicaciones");
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || "Error al subir imagen");
+      }
+
+      setImageUrl(data.secure_url);
+    } catch (error) {
+      console.error("Error al subir imagen:", error);
+      alert("No se pudo subir la imagen");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const canDelete = (pub) => {
     if (isAdmin) return true;
@@ -160,6 +230,19 @@ export default function Publications() {
           <h1 className="font-display text-4xl font-bold">
             MURO DE <span className="text-primary">CLUBES</span>
           </h1>
+          {isClubResponsible && (
+            <Button
+              variant="outline"
+              className="mt-4 border-primary/30 text-primary"
+              onClick={() => {
+                setDisplayName(user?.full_name || "");
+                setProfileDialog(true);
+              }}
+            >
+              <UserPen className="w-4 h-4 mr-2" />
+              Cambiar nombre visible
+            </Button>
+          )}
           <p className="text-muted-foreground mt-1">
             Publicaciones de los clubes de la Copa Kenia
           </p>
@@ -297,10 +380,11 @@ export default function Publications() {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm">
-                        {pub.club_name || "Club"}
+                        {pub.user_name || "Usuario"}
                       </p>
+
                       <p className="text-xs text-muted-foreground">
-                        {pub.user_name} ·{" "}
+                        {pub.club_name ? `${pub.club_name} · ` : ""}
                         {pub.created_date
                           ? format(new Date(pub.created_date), "d MMM yyyy", {
                               locale: es,
@@ -354,7 +438,9 @@ export default function Publications() {
                     </div>
                     {pub.description && (
                       <p className="text-sm">
-                        <span className="font-medium">{pub.club_name} </span>
+                        <span className="font-medium">
+                          {pub.user_name || "Usuario"}{" "}
+                        </span>
                         {pub.description}
                       </p>
                     )}
@@ -365,6 +451,38 @@ export default function Publications() {
           </AnimatePresence>
         </div>
       )}
+      <Dialog open={profileDialog} onOpenChange={setProfileDialog}>
+        <DialogContent className="bg-card border-border max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              Cambiar nombre visible
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label>Nombre que aparecerá en el muro</Label>
+              <Input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Ej: Boca"
+                className="bg-background"
+              />
+            </div>
+
+            <Button
+              className="w-full bg-primary"
+              disabled={updateProfileMutation.isPending || !displayName.trim()}
+              onClick={() => updateProfileMutation.mutate()}
+            >
+              {updateProfileMutation.isPending && (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              )}
+              Guardar nombre
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
