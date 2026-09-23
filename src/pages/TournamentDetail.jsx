@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
   getTournamentById,
   updateTournament,
+  removeTournamentTeam,
 } from '@/services/tournamentService';
 
 import {
@@ -57,6 +58,9 @@ import {
 
 import ReclasificacionTab from '@/components/tournament/ReclasificacionTab';
 import PlayoffsTab from '@/components/tournament/PlayoffsTab';
+import TeamEnrollment from '@/components/tournament/TeamEnrollment';
+import ScoreDialog from '@/components/tournament/ScoreDialog';
+import { validateScore } from '@/lib/tournamentEntry';
 
 export default function TournamentDetail() {
   const { id } = useParams();
@@ -66,6 +70,8 @@ export default function TournamentDetail() {
 
   const [matchDialog, setMatchDialog] = useState(false);
   const [editingMatch, setEditingMatch] = useState(null);
+  const [scoreMatch, setScoreMatch] = useState(null);
+  const [notice, setNotice] = useState('');
 
   const [groupDialog, setGroupDialog] = useState(false);
   const [groupCount, setGroupCount] = useState(1);
@@ -145,6 +151,12 @@ export default function TournamentDetail() {
 
   const saveMatch = useMutation({
     mutationFn: (data) => {
+      if (!isAdmin) throw new Error('Necesitás una cuenta administradora.');
+      if (!data.home_team_id || !data.away_team_id || data.home_team_id === data.away_team_id) throw new Error('Seleccioná dos equipos distintos.');
+      if (data.status === 'finalizado') {
+        const error = validateScore(data.home_score, data.away_score);
+        if (error) throw new Error(error);
+      }
       const homeTeam = teamsMap[data.home_team_id];
       const awayTeam = teamsMap[data.away_team_id];
 
@@ -182,20 +194,8 @@ export default function TournamentDetail() {
       queryClient.invalidateQueries({ queryKey: ['matches', id] }),
   });
 
-  const addTeam = useMutation({
-    mutationFn: async (teamId) => {
-      const ids = [...(tournament?.team_ids || []), teamId];
-      return updateTournament(id, { team_ids: ids });
-    },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['tournament', id] }),
-  });
-
   const removeTeam = useMutation({
-    mutationFn: async (teamId) => {
-      const ids = (tournament?.team_ids || []).filter((tid) => tid !== teamId);
-      return updateTournament(id, { team_ids: ids });
-    },
+    mutationFn: (teamId) => removeTournamentTeam(id, teamId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['tournament', id] }),
   });
@@ -216,6 +216,7 @@ export default function TournamentDetail() {
     });
 
   const handleNewMatch = () => {
+    saveMatch.reset();
     setEditingMatch(null);
     setMatchForm({
       home_team_id: '',
@@ -234,6 +235,7 @@ export default function TournamentDetail() {
   };
 
   const handleEditMatch = (m) => {
+    saveMatch.reset();
     setEditingMatch(m);
     setMatchForm({
       home_team_id: m.home_team_id || '',
@@ -409,7 +411,7 @@ export default function TournamentDetail() {
   };
 
   const scheduledMatches = matches
-    .filter((m) => m.status === 'programado')
+    .filter((m) => m.status === 'programado' || m.status === 'en_curso')
     .sort(sortMatches);
 
   const finishedMatches = matches
@@ -420,9 +422,6 @@ export default function TournamentDetail() {
     .filter((m) => m.phase && m.phase !== 'grupos')
     .sort(sortMatches);
 
-  const availableTeamsToAdd = allTeams.filter(
-    (t) => !tournament?.team_ids?.includes(t.id)
-  );
   const removeTeamFromGroup = useMutation({
     mutationFn: async ({ teamId, groupName }) => {
       const groupMatches = matches.filter(
@@ -531,6 +530,7 @@ export default function TournamentDetail() {
                   match={m}
                   isAdmin={isAdmin}
                   onEdit={handleEditMatch}
+                  onScore={setScoreMatch}
                   onDelete={(mid) => deleteMatch.mutate(mid)}
                 />
               ))}
@@ -550,6 +550,7 @@ export default function TournamentDetail() {
                   showScore
                   isAdmin={isAdmin}
                   onEdit={handleEditMatch}
+                  onScore={setScoreMatch}
                   onDelete={(mid) => deleteMatch.mutate(mid)}
                 />
               ))}
@@ -694,24 +695,8 @@ export default function TournamentDetail() {
         </TabsContent>
 
         <TabsContent value='equipos'>
-          {isAdmin && availableTeamsToAdd.length > 0 && (
-            <div className='mb-4 flex items-center gap-3 flex-wrap'>
-              <span className='text-sm text-muted-foreground'>
-                Agregar equipo:
-              </span>
-
-              {availableTeamsToAdd.slice(0, 10).map((t) => (
-                <Button
-                  key={t.id}
-                  size='sm'
-                  variant='outline'
-                  onClick={() => addTeam.mutate(t.id)}
-                >
-                  <Plus className='w-3 h-3 mr-1' /> {t.name}
-                </Button>
-              ))}
-            </div>
-          )}
+          {isAdmin && <TeamEnrollment tournament={tournament} teams={allTeams} />}
+          {removeTeam.isError && <p role='alert' className='text-sm text-destructive mb-3'>No se pudo quitar el equipo. Volvé a intentar.</p>}
 
           {tournamentTeams.length === 0 ? (
             <EmptyState icon={Users} text='No hay equipos en este torneo' />
@@ -746,6 +731,8 @@ export default function TournamentDetail() {
                       size='icon'
                       variant='ghost'
                       className='text-destructive h-8 w-8'
+                      disabled={removeTeam.isPending}
+                      aria-label={`Quitar ${t.name} del torneo`}
                       onClick={() => removeTeam.mutate(t.id)}
                     >
                       <Trash2 className='w-3 h-3' />
@@ -757,6 +744,8 @@ export default function TournamentDetail() {
           )}
         </TabsContent>
       </Tabs>
+      {notice && <p role='status' className='rounded-xl border border-border bg-card p-3 mt-4'>{notice}</p>}
+      {scoreMatch && isAdmin && <ScoreDialog key={scoreMatch.id} match={scoreMatch} tournamentId={id} onClose={() => setScoreMatch(null)} onSaved={setNotice} />}
 
       <Dialog open={groupDialog} onOpenChange={setGroupDialog}>
         <DialogContent className='bg-card border-border max-w-sm'>
@@ -816,6 +805,7 @@ export default function TournamentDetail() {
       <Dialog
         open={matchDialog}
         onOpenChange={(v) => {
+          if (saveMatch.isPending) return;
           setMatchDialog(v);
           if (!v) {
             setEditingMatch(null);
@@ -833,7 +823,7 @@ export default function TournamentDetail() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              saveMatch.mutate(matchForm);
+              if (!saveMatch.isPending) saveMatch.mutate(matchForm);
             }}
             className='space-y-4'
           >
@@ -1041,6 +1031,7 @@ export default function TournamentDetail() {
               )}
               {editingMatch ? 'Guardar' : 'Crear partido'}
             </Button>
+            {saveMatch.isError && <p role='alert' className='text-sm text-destructive'>{saveMatch.error?.message || 'No se pudo guardar el partido. Volvé a intentar.'}</p>}
           </form>
         </DialogContent>
       </Dialog>
@@ -1059,7 +1050,7 @@ function EmptyState({ icon: Icon, text }) {
   );
 }
 
-function MatchCard({ match, showScore, isAdmin, onEdit, onDelete }) {
+function MatchCard({ match, showScore, isAdmin, onEdit, onDelete, onScore }) {
   return (
     <div className='rounded-xl border border-border bg-card p-4 md:p-5'>
       <div className='flex items-center justify-between mb-3'>
@@ -1086,6 +1077,7 @@ function MatchCard({ match, showScore, isAdmin, onEdit, onDelete }) {
               FINAL
             </Badge>
           )}
+          {match.status === 'en_curso' && <Badge variant='outline'>En curso</Badge>}
         </div>
       </div>
 
@@ -1120,7 +1112,8 @@ function MatchCard({ match, showScore, isAdmin, onEdit, onDelete }) {
       )}
 
       {isAdmin && (
-        <div className='flex gap-2 mt-3 pt-3 border-t border-border'>
+        <div className='flex flex-wrap gap-2 mt-3 pt-3 border-t border-border'>
+          <Button size='sm' onClick={() => onScore(match)}>{showScore ? 'Editar resultado' : 'Cargar resultado'}</Button>
           <Button
             size='sm'
             variant='ghost'

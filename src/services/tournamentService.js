@@ -6,9 +6,19 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 
 import { db } from "@/firebase/config";
+
+export const addTournamentTeams = (id, teamIds) => {
+  if (!teamIds.length) return Promise.resolve();
+  return updateDoc(doc(db, 'tournaments', id), { team_ids: arrayUnion(...new Set(teamIds)) });
+};
+
+export const removeTournamentTeam = (id, teamId) =>
+  updateDoc(doc(db, 'tournaments', id), { team_ids: arrayRemove(teamId) });
 
 // Obtener todos los torneos
 export const getTournaments = async () => {
