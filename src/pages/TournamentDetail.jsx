@@ -377,6 +377,7 @@ export default function TournamentDetail() {
 
       <Tabs defaultValue='fixture' className='space-y-6'>
         <Button asChild variant='outline'><Link to={`/cartelera/${id}`}>Ver cartelera · Imagen y QR</Link></Button>
+        <Button asChild variant='outline'><Link to='/pantalla' target='_blank' rel='noopener noreferrer'>Modo TV · Copas femeninas</Link></Button>
         <div className='overflow-x-auto pb-2 -mx-4 px-4'>
           <TabsList className='bg-card border border-border min-w-max'>
             <TabsTrigger value='fixture'>Fixture</TabsTrigger>

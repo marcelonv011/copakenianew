@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import AdminRoute from '@/components/AdminRoute';
 
 import AppLayout from "@/components/layout/AppLayout";
 
@@ -7,13 +8,13 @@ import Teams from "@/pages/Teams";
 import Tournaments from "@/pages/Tournaments";
 import TournamentDetail from "@/pages/TournamentDetail";
 import TournamentPoster from "@/pages/TournamentPoster";
+import TournamentTV from '@/pages/TournamentTV';
 import Champions from "@/pages/Champions";
 import Sponsors from "@/pages/Sponsors";
 import Publications from "@/pages/Publications";
 import AdminUsers from "@/pages/AdminUsers";
 
 import Login from "@/pages/Login";
-import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 
@@ -23,13 +24,15 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/cartelera/:id" element={<TournamentPoster />} />
+      <Route path="/pantalla" element={<TournamentTV />} />
       {/* Auth */}
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/register" element={<Navigate to='/login' replace />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Sitio */}
+      <Route element={<AdminRoute />}>
       <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/torneos" element={<Tournaments />} />
@@ -43,6 +46,7 @@ export default function AppRoutes() {
 
       {/* 404 */}
       <Route path="*" element={<PageNotFound />} />
+      </Route>
     </Routes>
   );
 }

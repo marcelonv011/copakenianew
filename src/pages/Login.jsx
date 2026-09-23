@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   signInWithEmailAndPassword,
@@ -103,7 +103,7 @@ export default function Login() {
           </h1>
 
           <p className='text-muted-foreground mt-2'>
-            Ingresá a tu cuenta de Copa Kenia
+            Acceso exclusivo para administración
           </p>
         </div>
 
@@ -195,13 +195,7 @@ export default function Login() {
         </div>
 
         <p className='text-center text-sm text-muted-foreground mt-6'>
-          ¿No tenés cuenta?{' '}
-          <Link
-            to='/register'
-            className='text-primary font-medium hover:underline'
-          >
-            Registrate
-          </Link>
+          Horarios, resultados y posiciones disponibles desde el QR de cada cartelera.
         </p>
       </div>
     </div>
