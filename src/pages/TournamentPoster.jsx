@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
+import { calculateStandingsByGroup } from '@/lib/standings';
 import QRCode from 'qrcode';
 import { watchPoster } from '@/services/posterService';
 import MatchPoster from '@/components/tournament/MatchPoster';
@@ -12,8 +14,11 @@ export default function TournamentPoster() {
 }
 
 function PosterContent({ id }) {
+  const { user, isAuthenticated } = useAuth();
+  const isAdmin = isAuthenticated && user?.role === 'admin';
   const [tournament, setTournament] = useState(undefined);
   const [matches, setMatches] = useState(null);
+  const [teams, setTeams] = useState(null);
   const [error, setError] = useState('');
   const [cached, setCached] = useState(true);
   const [online, setOnline] = useState(navigator.onLine);
@@ -30,7 +35,7 @@ function PosterContent({ id }) {
     setMatches(items);
     setCached(fromCache);
     if (!fromCache) setReceived(new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }));
-  }, () => setError('No pudimos cargar la cartelera pública. Revisá la conexión o consultá con la organización.')), [id]);
+  }, setTeams, () => setError('No pudimos cargar la cartelera pública. Revisá la conexión o consultá con la organización.')), [id]);
 
   useEffect(() => {
     let active = true;
@@ -52,6 +57,7 @@ function PosterContent({ id }) {
   const pages = Math.max(1, Math.ceil(sorted.length / POSTER_PAGE_SIZE));
   const currentPage = Math.min(page, pages - 1);
   const visible = sorted.slice(currentPage * POSTER_PAGE_SIZE, (currentPage + 1) * POSTER_PAGE_SIZE);
+  const standings = calculateStandingsByGroup(matches || [], (teams || []).filter((team) => tournament?.team_ids?.includes(team.id)), tournament?.group_config?.groupNames?.length ? tournament.group_config.groupNames : ['Zona A']);
 
   async function exportImage() {
     if (exporting) return;
@@ -59,7 +65,7 @@ function PosterContent({ id }) {
     setNotice('');
     try {
       await downloadPoster(posterRef.current.querySelector('svg'), `copa-kenia-${date || 'cartelera'}-${currentPage + 1}.png`);
-      setNotice('Imagen descargada. El QR abre la cartelera actualizada; la imagen conserva estos resultados.');
+      setNotice('Imagen descargada.');
     } catch {
       setNotice('No se pudo descargar la imagen. Intentá nuevamente o compartí el enlace.');
     } finally {
@@ -67,27 +73,27 @@ function PosterContent({ id }) {
     }
   }
 
-  if (error) return <main className='max-w-xl mx-auto p-8 text-center space-y-4'><h1 className='text-2xl font-bold'>Cartelera no disponible</h1><p role='alert'>{error}</p><Button onClick={() => window.location.reload()}>Volver a intentar</Button><p><Link to='/torneos' className='underline'>Ver torneos</Link></p></main>;
-  if (tournament === null) return <main className='p-8 text-center'><h1 className='text-2xl font-bold'>No encontramos este torneo</h1><Link to='/torneos' className='underline'>Ver torneos</Link></main>;
-  if (!tournament || matches === null) return <main className='p-8 text-center' role='status'>Cargando horarios y resultados…</main>;
+  if (error) return <main className='max-w-xl mx-auto p-8 text-center space-y-4'><h1 className='text-2xl font-bold'>Cartelera no disponible</h1><p role='alert'>{error}</p><Button onClick={() => window.location.reload()}>Volver a intentar</Button></main>;
+  if (tournament === null) return <main className='p-8 text-center'><h1 className='text-2xl font-bold'>No encontramos este torneo</h1></main>;
+  if (!tournament || matches === null || teams === null) return <main className='p-8 text-center' role='status'>Cargando cartelera…</main>;
 
   return <main className='min-h-screen bg-slate-950 text-white px-3 py-6 sm:px-6'>
-    <div className='max-w-5xl mx-auto space-y-5'>
-      <header className='flex flex-wrap justify-between gap-3 items-center'>
-        <div><h1 className='text-xl font-bold'>Cartelera del torneo</h1><p className='text-sm text-slate-300'>{online && !cached ? 'Se actualiza automáticamente al cargar resultados.' : 'Sin confirmar conexión: los datos pueden estar desactualizados.'}</p></div>
-        <Link className='text-sm underline text-sky-300' to={`/torneos/${id}`}>Ver torneo y posiciones</Link>
-      </header>
+    <div className='max-w-4xl mx-auto space-y-5'>
+      <h1 className='sr-only'>Cartelera de {tournament.name}</h1>
+      {(!online || cached) && <p role='status' className='text-sm text-slate-300'>Sin conexión confirmada: los datos pueden estar desactualizados.</p>}
       <div className='flex flex-wrap items-end gap-3'>
         <label className='text-sm'>Fecha<select aria-label='Fecha de la cartelera' value={date} onChange={(e) => { setDate(e.target.value); setPage(0); }} className='block mt-1 rounded-lg bg-slate-900 border border-slate-600 px-3 py-2'><option value=''>Todas las fechas</option>{dates.map((day) => <option key={day} value={day}>{displayDate(day, true)}</option>)}</select></label>
-        <Button disabled={!qr || exporting} onClick={exportImage}>{exporting ? 'Preparando imagen…' : 'Descargar imagen'}</Button>
-        <Button disabled={!qr} onClick={() => saveDataUrl(qr, 'qr-copa-kenia.png')}>Descargar QR</Button>
-        <Button onClick={async () => { try { await navigator.clipboard.writeText(shareUrl); setNotice('Enlace copiado.'); } catch { setNotice(`Copiá este enlace: ${shareUrl}`); } }}>Copiar enlace</Button>
+        {isAdmin && <details><summary className='cursor-pointer text-sm'>Descargar / compartir</summary><div className='flex flex-wrap gap-2 mt-2'>
+          <Button disabled={exporting} onClick={exportImage}>{exporting ? 'Preparando imagen…' : 'Descargar imagen'}</Button>
+          <Button disabled={!qr} onClick={() => saveDataUrl(qr, 'qr-copa-kenia.png')}>Descargar QR</Button>
+          <Button onClick={async () => { try { await navigator.clipboard.writeText(shareUrl); setNotice('Enlace copiado.'); } catch { setNotice(`Copiá este enlace: ${shareUrl}`); } }}>Copiar enlace</Button>
+        </div></details>}
       </div>
       {notice && <p role='status' className='rounded-lg bg-slate-800 p-3 text-sm break-words'>{notice}</p>}
-      <div className='grid lg:grid-cols-[minmax(0,1fr)_210px] gap-5 items-start'>
+      <div>
         <div>
-          <div ref={posterRef} className='rounded-xl overflow-hidden shadow-2xl border border-white/10'><MatchPoster tournament={tournament} matches={visible} date={date} qr={qr} page={currentPage} pages={pages} updatedLabel={cached || !online ? 'Sin conexión confirmada' : received} /></div>
-          <section aria-label='Detalle de partidos de esta página' className='mt-4 space-y-3 sm:sr-only'>
+          <div ref={posterRef} className='rounded-xl overflow-hidden shadow-2xl border border-white/10'><MatchPoster tournament={tournament} matches={visible} date={date} standings={standings} page={currentPage} pages={pages} updatedLabel={cached || !online ? 'Sin conexión confirmada' : received} /></div>
+          <section aria-label='Detalle de partidos de esta página' className='sr-only'>
             <h2 className='font-semibold'>Partidos</h2>
             {visible.map((match) => {
               const display = matchDisplay(match);
@@ -99,15 +105,9 @@ function PosterContent({ id }) {
               </article>;
             })}
           </section>
+          <section className='sr-only' aria-label='Tabla de posiciones'>{standings.map((group) => <div key={group.groupName}><h2>{group.groupName}</h2><table><thead><tr>{['Equipo', 'PJ', 'PG', 'PP', 'PF', 'PC', 'DIF', 'PTS'].map((title) => <th key={title}>{title}</th>)}</tr></thead><tbody>{group.standings.map((team) => <tr key={team.id}><th>{team.name}</th>{['pj', 'pg', 'pp', 'pf', 'pc', 'diff', 'pts'].map((key) => <td key={key}>{team[key]}</td>)}</tr>)}</tbody></table></div>)}</section>
           {pages > 1 && <nav aria-label='Páginas de partidos' className='flex justify-between items-center gap-3 mt-4'><Button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Anterior</Button><span className='text-sm'>{currentPage + 1} / {pages}</span><Button disabled={currentPage >= pages - 1} onClick={() => setPage(currentPage + 1)}>Siguiente</Button></nav>}
         </div>
-        <aside className='rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-3'>
-          {qr && <img src={qr} alt='QR para abrir esta cartelera' className='w-40 h-40 mx-auto' />}
-          <h2 className='font-semibold'>Un QR para todo el torneo</h2>
-          <p className='text-sm text-slate-300'>Compartilo o imprimilo una vez. Al abrirlo, la gente ve los horarios y resultados que vas cargando.</p>
-          <a href={shareUrl} className='block break-all text-xs text-sky-300 underline'>{shareUrl}</a>
-          <p className='text-xs text-slate-400'>La imagen PNG es una captura. Descargá una nueva después de actualizar los partidos.</p>
-        </aside>
       </div>
     </div>
   </main>;

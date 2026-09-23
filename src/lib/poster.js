@@ -63,9 +63,10 @@ async function embedImage(image) {
 
 export async function downloadPoster(svg, filename) {
   const clone = svg.cloneNode(true);
+  const height = Number(svg.getAttribute('viewBox').split(/\s+/)[3]);
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.setAttribute('width', '1080');
-  clone.setAttribute('height', '1350');
+  clone.setAttribute('height', String(height));
   await Promise.all([...clone.querySelectorAll('image')].map(embedImage));
   const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -74,7 +75,7 @@ export async function downloadPoster(svg, filename) {
     await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; image.src = url; });
     const canvas = document.createElement('canvas');
     canvas.width = 1080;
-    canvas.height = 1350;
+    canvas.height = height;
     canvas.getContext('2d').drawImage(image, 0, 0);
     saveDataUrl(canvas.toDataURL('image/png'), filename);
   } finally {
