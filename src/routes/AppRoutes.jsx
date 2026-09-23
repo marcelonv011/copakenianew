@@ -6,6 +6,7 @@ import Home from "@/pages/Home";
 import Teams from "@/pages/Teams";
 import Tournaments from "@/pages/Tournaments";
 import TournamentDetail from "@/pages/TournamentDetail";
+import TournamentPoster from "@/pages/TournamentPoster";
 import Champions from "@/pages/Champions";
 import Sponsors from "@/pages/Sponsors";
 import Publications from "@/pages/Publications";
@@ -21,6 +22,7 @@ import PageNotFound from "@/lib/PageNotFound";
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/cartelera/:id" element={<TournamentPoster />} />
       {/* Auth */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

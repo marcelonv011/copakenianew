@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -502,6 +502,7 @@ export default function TournamentDetail() {
       </div>
 
       <Tabs defaultValue='fixture' className='space-y-6'>
+        <Button asChild variant='outline'><Link to={`/cartelera/${id}`}>Ver cartelera · Imagen y QR</Link></Button>
         <div className='overflow-x-auto pb-2 -mx-4 px-4'>
           <TabsList className='bg-card border border-border min-w-max'>
             <TabsTrigger value='fixture'>Fixture</TabsTrigger>
