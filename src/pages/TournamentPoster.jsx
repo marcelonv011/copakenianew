@@ -20,7 +20,11 @@ function PosterContent({ id }) {
   const [cached, setCached] = useState(true);
   const [online, setOnline] = useState(navigator.onLine);
   const [received, setReceived] = useState('');
-  const [date, setDate] = useState('');
+  const [today] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
+  const [date, setDate] = useState(today);
   const [page, setPage] = useState(0);
   const [qr, setQr] = useState('');
   const [notice, setNotice] = useState('');
@@ -50,7 +54,7 @@ function PosterContent({ id }) {
   }, []);
 
   const sorted = orderedMatches(matches || [], date);
-  const dates = [...new Set((matches || []).map((match) => match.date).filter(Boolean))].sort();
+  const dates = [...new Set((matches || []).map((match) => match.date).filter((day) => day && day !== today))].sort();
   const pages = Math.max(1, Math.ceil(sorted.length / POSTER_PAGE_SIZE));
   const currentPage = Math.min(page, pages - 1);
   const visible = sorted.slice(currentPage * POSTER_PAGE_SIZE, (currentPage + 1) * POSTER_PAGE_SIZE);
@@ -92,7 +96,7 @@ function PosterContent({ id }) {
       <h1 className='sr-only'>Cartelera de {tournament.name}</h1>
       {(!online || cached) && <p role='status' className='text-sm text-slate-300'>Sin conexión confirmada: los datos pueden estar desactualizados.</p>}
       <div className='flex flex-wrap items-end gap-3'>
-        <label className='text-sm'>Fecha<select aria-label='Fecha de la cartelera' value={date} onChange={(e) => { setDate(e.target.value); setPage(0); }} className='block mt-1 rounded-lg bg-slate-900 border border-slate-600 px-3 py-2'><option value=''>Todas las fechas</option>{dates.map((day) => <option key={day} value={day}>{displayDate(day, true)}</option>)}</select></label>
+        <label className='text-sm'>Fecha<select aria-label='Fecha de la cartelera' value={date} onChange={(e) => { setDate(e.target.value); setPage(0); }} className='block mt-1 rounded-lg bg-slate-900 border border-slate-600 px-3 py-2'><option value={today}>Hoy · {displayDate(today, true)}</option><option value=''>Todas las fechas</option>{dates.map((day) => <option key={day} value={day}>{displayDate(day, true)}</option>)}</select></label>
           <Button onClick={sharePoster}>Compartir cartelera</Button>
           <Button disabled={!qr || exporting} onClick={exportImage}>{exporting ? 'Preparando imagen…' : 'Descargar imagen'}</Button>
           <Button disabled={!qr} onClick={() => saveDataUrl(qr, 'qr-copa-kenia.png')}>Descargar QR</Button>
