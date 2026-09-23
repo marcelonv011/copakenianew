@@ -13,14 +13,14 @@ function Team({ name, logo, x, y }) {
   </g>;
 }
 
-export default function MatchPoster({ tournament, matches, date, standings = [], page, pages, updatedLabel }) {
+export default function MatchPoster({ tournament, matches, date, standings = [], qr, page, pages, updatedLabel }) {
   const standingsTop = 370 + Math.max(1, matches.length) * 95;
   const groups = standings.filter((group) => group.standings.length);
   const sections = groups.map((group, index) => ({ ...group,
     y: standingsTop + 65 + groups.slice(0, index).reduce((height, item) => height + 100 + item.standings.length * 64, 0),
   }));
   const nextY = standingsTop + 65 + (groups.length ? groups.reduce((height, group) => height + 100 + group.standings.length * 64, 0) : 65);
-  const height = Math.max(1350, nextY + 85);
+  const height = Math.max(1350, nextY + (qr ? 250 : 85));
   return <svg xmlns='http://www.w3.org/2000/svg' viewBox={`0 0 1080 ${height}`} role='img' aria-label={`Horarios, resultados y posiciones de ${tournament.name}`} style={{ width: '100%', height: 'auto', display: 'block', fontFamily: 'Arial, sans-serif' }}>
     <defs>
       <linearGradient id='poster-bg' x1='0' y1='1' x2='1' y2='0'><stop stopColor='#0755d8' /><stop offset='.42' stopColor='#291087' /><stop offset='.78' stopColor='#ed24ad' /><stop offset='1' stopColor='#ff894c' /></linearGradient>
@@ -71,6 +71,7 @@ export default function MatchPoster({ tournament, matches, date, standings = [],
       })}
     </g>)}
     {!sections.length && <text x='40' y={nextY - 20} fill='white' fontSize='21'>Todavía no hay equipos asignados a grupos.</text>}
+    {qr && <g><image href={qr} x='866' y={height - 230} width='170' height='170' /><text x='951' y={height - 240} textAnchor='middle' fill='white' fontSize='16'>QR de la cartelera</text></g>}
     <text x='40' y={height - 30} fill='#e7e7ff' fontSize='16'>{updatedLabel ? `Actualizado: ${updatedLabel}` : ''}</text>
     <text x='1036' y={height - 30} textAnchor='end' fill='white' fontSize='16'>{page + 1} / {pages}</text>
   </svg>;

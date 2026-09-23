@@ -4,8 +4,8 @@ En cada torneo hay un botón **Ver cartelera · Imagen y QR**. Abre `/cartelera/
 
 - Antes del cierre se muestran el horario, los equipos, la cancha y la zona. Al guardar el resultado como finalizado se muestra el marcador en verde.
 - El QR siempre apunta a la cartelera completa de ese torneo en el dominio desde el cual se abre el sitio. Filtrar fechas o cambiar de página no cambia el QR.
-- La vista pública muestra solo la cartelera, el filtro de fecha y la paginación. No hay eslogan, panel promocional, enlaces al sitio ni QR dentro del afiche.
-- Con una cuenta administradora, abrir **Descargar / compartir** para descargar el QR por separado, copiar el enlace o descargar una imagen PNG de 1080 píxeles de ancho con hasta ocho partidos por página. La altura se adapta para incluir las posiciones completas. Para más partidos, recorrer las páginas y descargar cada una.
+- La vista pública muestra la cartelera con QR, filtro de fecha y paginación, sin eslogan ni panel promocional.
+- Cualquier visitante, sin iniciar sesión, puede usar **Compartir cartelera**, **Copiar enlace**, **Descargar QR** y **Descargar imagen**. El QR también aparece al pie de la imagen PNG. La imagen tiene 1080 píxeles de ancho, hasta ocho partidos por página y altura adaptable para incluir las posiciones completas. Para más partidos, recorrer las páginas y descargar cada una.
 - La imagen descargada es una captura del momento; hay que descargarla de nuevo si cambian los datos. Quien escanea su QR accede a los datos actuales.
 - Debajo de los partidos se incluyen las posiciones acumuladas de todas las zonas con el mismo diseño. Usan la misma función de cálculo que la pestaña Posiciones del torneo. El filtro de fecha limita los partidos del afiche, no el acumulado de posiciones.
 - Los logos externos que no permiten exportación se omiten del PNG conservando el nombre y la inicial. La cartelera incluye una versión textual para lectores de pantalla.

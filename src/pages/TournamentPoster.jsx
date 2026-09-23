@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '@/lib/AuthContext';
 import { calculateStandingsByGroup } from '@/lib/standings';
 import QRCode from 'qrcode';
 import { watchPoster } from '@/services/posterService';
@@ -14,8 +13,6 @@ export default function TournamentPoster() {
 }
 
 function PosterContent({ id }) {
-  const { user, isAuthenticated } = useAuth();
-  const isAdmin = isAuthenticated && user?.role === 'admin';
   const [tournament, setTournament] = useState(undefined);
   const [matches, setMatches] = useState(null);
   const [teams, setTeams] = useState(null);
@@ -73,6 +70,19 @@ function PosterContent({ id }) {
     }
   }
 
+  async function sharePoster() {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: tournament.name, url: shareUrl });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        setNotice('Enlace copiado.');
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') setNotice(`Copiá este enlace: ${shareUrl}`);
+    }
+  }
+
   if (error) return <main className='max-w-xl mx-auto p-8 text-center space-y-4'><h1 className='text-2xl font-bold'>Cartelera no disponible</h1><p role='alert'>{error}</p><Button onClick={() => window.location.reload()}>Volver a intentar</Button></main>;
   if (tournament === null) return <main className='p-8 text-center'><h1 className='text-2xl font-bold'>No encontramos este torneo</h1></main>;
   if (!tournament || matches === null || teams === null) return <main className='p-8 text-center' role='status'>Cargando cartelera…</main>;
@@ -83,16 +93,15 @@ function PosterContent({ id }) {
       {(!online || cached) && <p role='status' className='text-sm text-slate-300'>Sin conexión confirmada: los datos pueden estar desactualizados.</p>}
       <div className='flex flex-wrap items-end gap-3'>
         <label className='text-sm'>Fecha<select aria-label='Fecha de la cartelera' value={date} onChange={(e) => { setDate(e.target.value); setPage(0); }} className='block mt-1 rounded-lg bg-slate-900 border border-slate-600 px-3 py-2'><option value=''>Todas las fechas</option>{dates.map((day) => <option key={day} value={day}>{displayDate(day, true)}</option>)}</select></label>
-        {isAdmin && <details><summary className='cursor-pointer text-sm'>Descargar / compartir</summary><div className='flex flex-wrap gap-2 mt-2'>
-          <Button disabled={exporting} onClick={exportImage}>{exporting ? 'Preparando imagen…' : 'Descargar imagen'}</Button>
+          <Button onClick={sharePoster}>Compartir cartelera</Button>
+          <Button disabled={!qr || exporting} onClick={exportImage}>{exporting ? 'Preparando imagen…' : 'Descargar imagen'}</Button>
           <Button disabled={!qr} onClick={() => saveDataUrl(qr, 'qr-copa-kenia.png')}>Descargar QR</Button>
           <Button onClick={async () => { try { await navigator.clipboard.writeText(shareUrl); setNotice('Enlace copiado.'); } catch { setNotice(`Copiá este enlace: ${shareUrl}`); } }}>Copiar enlace</Button>
-        </div></details>}
       </div>
       {notice && <p role='status' className='rounded-lg bg-slate-800 p-3 text-sm break-words'>{notice}</p>}
       <div>
         <div>
-          <div ref={posterRef} className='rounded-xl overflow-hidden shadow-2xl border border-white/10'><MatchPoster tournament={tournament} matches={visible} date={date} standings={standings} page={currentPage} pages={pages} updatedLabel={cached || !online ? 'Sin conexión confirmada' : received} /></div>
+          <div ref={posterRef} className='rounded-xl overflow-hidden shadow-2xl border border-white/10'><MatchPoster tournament={tournament} matches={visible} date={date} standings={standings} qr={qr} page={currentPage} pages={pages} updatedLabel={cached || !online ? 'Sin conexión confirmada' : received} /></div>
           <section aria-label='Detalle de partidos de esta página' className='sr-only'>
             <h2 className='font-semibold'>Partidos</h2>
             {visible.map((match) => {
