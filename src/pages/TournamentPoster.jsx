@@ -6,6 +6,8 @@ import { watchPoster } from '@/services/posterService';
 import MatchPoster from '@/components/tournament/MatchPoster';
 import { displayDate, downloadPoster, matchDisplay, orderedMatches, POSTER_PAGE_SIZE, saveDataUrl } from '@/lib/poster';
 import { Button } from '@/components/ui/button';
+import { usePosterRefresh } from '@/lib/usePosterRefresh';
+import { localDay } from '@/lib/tvSlides';
 
 export default function TournamentPoster() {
   const { id } = useParams();
@@ -13,6 +15,7 @@ export default function TournamentPoster() {
 }
 
 function PosterContent({ id }) {
+  const refreshRevision = usePosterRefresh();
   const [tournament, setTournament] = useState(undefined);
   const [matches, setMatches] = useState(null);
   const [teams, setTeams] = useState(null);
@@ -20,10 +23,8 @@ function PosterContent({ id }) {
   const [cached, setCached] = useState(true);
   const [online, setOnline] = useState(navigator.onLine);
   const [received, setReceived] = useState('');
-  const [today] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  });
+  const today = localDay();
+  const previousToday = useRef(today);
   const [date, setDate] = useState(today);
   const [page, setPage] = useState(0);
   const [qr, setQr] = useState('');
@@ -32,11 +33,20 @@ function PosterContent({ id }) {
   const posterRef = useRef(null);
   const shareUrl = `${window.location.origin}/cartelera/${encodeURIComponent(id)}`;
 
-  useEffect(() => watchPoster(id, setTournament, (items, fromCache) => {
+  useEffect(() => {
+    return watchPoster(id, setTournament, (items, fromCache) => {
+    setError('');
     setMatches(items);
     setCached(fromCache);
     if (!fromCache) setReceived(new Date().toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }));
-  }, setTeams, () => setError('No pudimos cargar la cartelera pública. Revisá la conexión o consultá con la organización.')), [id]);
+    }, setTeams, () => setError('No pudimos cargar la cartelera pública. Revisá la conexión o consultá con la organización.'));
+  }, [id, refreshRevision]);
+
+  useEffect(() => {
+    const previous = previousToday.current;
+    previousToday.current = today;
+    setDate((selected) => selected === previous ? today : selected);
+  }, [today]);
 
   useEffect(() => {
     let active = true;

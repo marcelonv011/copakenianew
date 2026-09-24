@@ -4,6 +4,8 @@ Abrir https://copakenianew.vercel.app/pantalla en el navegador de la TV o de una
 
 La presentación inicia sola y cambia cada 15 segundos. Recorre U13, U15 y U17 femeninos: partidos del día y posiciones acumuladas por grupo. Divide automáticamente las listas largas en varias diapositivas. Los datos se actualizan al cargar resultados, usando el mismo cálculo de posiciones de la administración.
 
+La cartelera y el modo TV renuevan automáticamente la conexión a los datos cada 30 minutos, también al recuperar Internet y al volver a una pestaña que quedó suspendida más de 30 minutos. Esta actualización conserva la pantalla completa y la presentación. Los cambios en vivo siguen apareciendo sin esperar ese intervalo.
+
 - F: pantalla completa. También se puede usar F11 en una computadora.
 - Espacio: pausar o continuar.
 - Flechas izquierda y derecha: cambiar manualmente de diapositiva.

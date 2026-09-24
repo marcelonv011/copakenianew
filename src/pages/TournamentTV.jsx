@@ -4,8 +4,10 @@ import { FEMALE_TOURNAMENTS } from '@/lib/femaleTournaments';
 import { localDay, slideSeconds } from '@/lib/tvSlides';
 import { watchPoster } from '@/services/posterService';
 import TvPlayer from '@/components/tournament/TvPlayer';
+import { usePosterRefresh } from '@/lib/usePosterRefresh';
 
 export default function TournamentTV() {
+  const refreshRevision = usePosterRefresh();
   const [entries, setEntries] = useState({});
   const [qrs, setQrs] = useState({});
   const [today, setToday] = useState(localDay);
@@ -20,12 +22,12 @@ export default function TournamentTV() {
       const update = (patch) => setEntries((previous) => ({ ...previous, [cup.id]: { ...previous[cup.id], ...patch } }));
       return watchPoster(cup.id,
         (tournament) => update({ tournament }),
-        (matches, cached) => update({ matches, cached, received: cached ? '' : new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) }),
+        (matches, cached) => update({ matches, cached, error: false, received: cached ? '' : new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) }),
         (teams) => update({ teams }),
         () => update({ error: true }));
     });
     return () => stops.forEach((stop) => stop());
-  }, []);
+  }, [refreshRevision]);
 
   useEffect(() => {
     let active = true;
