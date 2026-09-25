@@ -57,7 +57,7 @@ export default function TvPlayer({ entries, date, seconds = 15, qrs = {}, online
             <text x='1340' y={y + 44} textAnchor='middle' fill={display.result ? '#33e393' : 'white'} fontSize='40' fontWeight='800'>{display.result || 'VS'}</text>
             <text x='1340' y={y + 78} textAnchor='middle' fill='#a6c5df' fontSize='18'>{display.label}</text>
             <Name value={match.venue || 'A confirmar'} x={1530} y={y + 31} max={21} size={25} />
-            <text x='1530' y={y + 83} fill='#a6c5df' fontSize='19'>{textLines(match.group_name || match.phase || '', 28, 1)[0]}</text>
+            <text x='1530' y={y + 83} fill='#a6c5df' fontSize='19'>{textLines(match.cup ? `Copa ${match.cup} · ${match.phase}` : match.group_name || match.phase || '', 28, 1)[0]}</text>
           </g>;
         })}
         {!slide.rows.length && <text x='960' y='580' fill='white' textAnchor='middle' fontSize='38'>No hay partidos programados para esta fecha.</text>}

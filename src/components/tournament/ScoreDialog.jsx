@@ -30,7 +30,7 @@ export default function ScoreDialog({ match, tournamentId, onClose, onSaved }) {
             <label className='text-sm space-y-2'><span className='block break-words'>{match.away_team_name || 'Visitante'}</span><Input type='number' min='0' step='1' inputMode='numeric' required value={away} onFocus={(e) => e.target.select()} onChange={(e) => setAway(e.target.value)} className='text-center text-2xl h-16' /></label>
           </div>
           {valid && <p role='status' className='rounded-lg bg-primary/10 p-3 text-sm'>Ganador: <strong>{Number(home) > Number(away) ? match.home_team_name : match.away_team_name}</strong> · {home} – {away}</p>}
-          {(error || save.isError) && <p role='alert' className='text-sm text-destructive'>{error || 'No se pudo guardar. Los puntos siguen acá para volver a intentar.'}</p>}
+          {(error || save.isError) && <p role='alert' className='text-sm text-destructive'>{error || save.error?.message || 'No se pudo guardar. Los puntos siguen acá para volver a intentar.'}</p>}
           <div className='flex justify-end gap-2'><Button type='button' variant='outline' onClick={onClose}>Cancelar</Button><Button type='submit'>{save.isPending ? 'Guardando…' : 'Guardar resultado'}</Button></div>
         </fieldset>
       </form>

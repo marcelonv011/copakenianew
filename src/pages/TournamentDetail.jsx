@@ -59,6 +59,8 @@ import {
 
 import ReclasificacionTab from '@/components/tournament/ReclasificacionTab';
 import PlayoffsTab from '@/components/tournament/PlayoffsTab';
+import CupPlayoffs from '@/components/tournament/CupPlayoffs';
+import { playoffFormat } from '@/lib/playoffs';
 import TeamEnrollment from '@/components/tournament/TeamEnrollment';
 import ScoreDialog from '@/components/tournament/ScoreDialog';
 import { validateScore } from '@/lib/tournamentEntry';
@@ -153,7 +155,7 @@ export default function TournamentDetail() {
   const saveMatch = useMutation({
     mutationFn: (data) => {
       if (!isAdmin) throw new Error('Necesitás una cuenta administradora.');
-      if (!data.home_team_id || !data.away_team_id || data.home_team_id === data.away_team_id) throw new Error('Seleccioná dos equipos distintos.');
+      if (!editingMatch?.playoff_slot && (!data.home_team_id || !data.away_team_id || data.home_team_id === data.away_team_id)) throw new Error('Seleccioná dos equipos distintos.');
       if (data.status === 'finalizado') {
         const error = validateScore(data.home_score, data.away_score);
         if (error) throw new Error(error);
@@ -168,8 +170,8 @@ export default function TournamentDetail() {
           data.phase === 'grupos'
             ? data.group_name || groupNames[0] || 'Zona A'
             : '',
-        home_team_name: homeTeam?.name || '',
-        away_team_name: awayTeam?.name || '',
+        home_team_name: homeTeam?.name || editingMatch?.home_team_name || '',
+        away_team_name: awayTeam?.name || editingMatch?.away_team_name || '',
         home_team_logo: homeTeam?.logo_url || '',
         away_team_logo: awayTeam?.logo_url || '',
         home_score: data.home_score !== '' ? Number(data.home_score) : null,
@@ -553,12 +555,12 @@ export default function TournamentDetail() {
         </TabsContent>
 
         <TabsContent value='playoffs'>
-          <PlayoffsTab
+          {playoffFormat(id) ? <CupPlayoffs tournament={{ ...tournament, id }} matches={matches} teams={tournamentTeams} onEdit={handleEditMatch} onScore={setScoreMatch} /> : <PlayoffsTab
             tournamentId={id}
             matches={playoffMatches}
             tournamentTeams={tournamentTeams}
             isAdmin={isAdmin}
-          />
+          />}
         </TabsContent>
 
         <TabsContent value='reclasificacion'>
@@ -707,6 +709,7 @@ export default function TournamentDetail() {
               <div>
                 <Label>Equipo Local</Label>
                 <Select
+                  disabled={!!editingMatch?.playoff_slot}
                   value={matchForm.home_team_id}
                   onValueChange={(v) =>
                     setMatchForm({ ...matchForm, home_team_id: v })
@@ -728,6 +731,7 @@ export default function TournamentDetail() {
               <div>
                 <Label>Equipo Visitante</Label>
                 <Select
+                  disabled={!!editingMatch?.playoff_slot}
                   value={matchForm.away_team_id}
                   onValueChange={(v) =>
                     setMatchForm({ ...matchForm, away_team_id: v })
@@ -789,6 +793,7 @@ export default function TournamentDetail() {
               <div>
                 <Label>Fase</Label>
                 <Select
+                  disabled={!!editingMatch?.playoff_slot}
                   value={matchForm.phase}
                   onValueChange={(v) =>
                     setMatchForm({
@@ -933,6 +938,7 @@ function MatchCard({ match, showScore, isAdmin, onEdit, onDelete, onScore }) {
         <div>
           <span className='text-xs text-primary font-medium uppercase tracking-wider'>
             {match.phase || 'Grupos'}
+            {match.cup ? ` · Copa ${match.cup}` : ''}
             {match.matchday ? ` · Fecha ${match.matchday}` : ''}
           </span>
 
@@ -989,7 +995,7 @@ function MatchCard({ match, showScore, isAdmin, onEdit, onDelete, onScore }) {
 
       {isAdmin && (
         <div className='flex flex-wrap gap-2 mt-3 pt-3 border-t border-border'>
-          <Button size='sm' onClick={() => onScore(match)}>{showScore ? 'Editar resultado' : 'Cargar resultado'}</Button>
+          <Button size='sm' disabled={!!match.playoff_slot && (!match.home_team_id || !match.away_team_id)} onClick={() => onScore(match)}>{showScore ? 'Editar resultado' : 'Cargar resultado'}</Button>
           <Button
             size='sm'
             variant='ghost'
@@ -1004,6 +1010,7 @@ function MatchCard({ match, showScore, isAdmin, onEdit, onDelete, onScore }) {
             variant='ghost'
             className='text-destructive text-xs h-7'
             onClick={() => onDelete(match.id)}
+            disabled={!!match.playoff_slot}
           >
             <Trash2 className='w-3 h-3' />
           </Button>

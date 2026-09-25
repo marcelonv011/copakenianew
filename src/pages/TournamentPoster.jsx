@@ -4,6 +4,7 @@ import { calculateStandingsByGroup } from '@/lib/standings';
 import QRCode from 'qrcode';
 import { watchPoster } from '@/services/posterService';
 import MatchPoster from '@/components/tournament/MatchPoster';
+import PlayoffImage from '@/components/tournament/PlayoffImage';
 import { displayDate, downloadPoster, matchDisplay, orderedMatches, POSTER_PAGE_SIZE, saveDataUrl } from '@/lib/poster';
 import { Button } from '@/components/ui/button';
 import { usePosterRefresh } from '@/lib/usePosterRefresh';
@@ -113,6 +114,7 @@ function PosterContent({ id }) {
           <Button onClick={async () => { try { await navigator.clipboard.writeText(shareUrl); setNotice('Enlace copiado.'); } catch { setNotice(`Copiá este enlace: ${shareUrl}`); } }}>Copiar enlace</Button>
       </div>
       {notice && <p role='status' className='rounded-lg bg-slate-800 p-3 text-sm break-words'>{notice}</p>}
+      {matches.some((m) => m.playoff_slot) && <PlayoffImage tournament={{ ...tournament, id }} matches={matches.filter((m) => m.playoff_slot)} />}
       <div>
         <div>
           <div ref={posterRef} className='rounded-xl overflow-hidden shadow-2xl border border-white/10'><MatchPoster tournament={tournament} matches={visible} date={date} standings={standings} qr={qr} page={currentPage} pages={pages} updatedLabel={cached || !online ? 'Sin conexión confirmada' : received} /></div>

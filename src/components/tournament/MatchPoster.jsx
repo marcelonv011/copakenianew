@@ -49,7 +49,7 @@ export default function MatchPoster({ tournament, matches, date, standings = [],
         <text x='820' y={y + 39} textAnchor='middle' fill={display.result ? '#33e393' : '#e2e8f0'} fontSize='29' fontWeight='800'>{display.result || 'VS'}</text>
         <text x='820' y={y + 66} textAnchor='middle' fill={display.result ? '#33e393' : '#9cbddd'} fontSize='11' fontWeight='700'>{display.label}</text>
         <Lines text={match.venue || 'A confirmar'} x={913} y={y + 28} max={13} size={16} />
-        <text x='913' y={y + 78} fill='#a6c5df' fontSize='14'>{textLines(match.group_name || match.phase || '', 16, 1)[0]}</text>
+        <text x='913' y={y + 78} fill='#a6c5df' fontSize='14'>{textLines(match.cup ? `${match.cup} · ${match.phase}` : match.group_name || match.phase || '', 19, 1)[0]}</text>
       </g>;
     })}
     {!matches.length && <text x='540' y='395' textAnchor='middle' fill='#c9ddee' fontSize='26'>No hay partidos para esta fecha.</text>}
