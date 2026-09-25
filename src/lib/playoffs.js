@@ -10,8 +10,24 @@ export function winnerOf(match) {
   const side = match.home_score > match.away_score ? 'home' : 'away';
   return { id: match[`${side}_team_id`], name: match[`${side}_team_name`], logo: match[`${side}_team_logo`] || '' };
 }
+export function loserOf(match) {
+  if (!match || match.status !== 'finalizado' || validateScore(match.home_score, match.away_score)) return null;
+  const side = match.home_score < match.away_score ? 'home' : 'away';
+  return { id: match[`${side}_team_id`], name: match[`${side}_team_name`], logo: match[`${side}_team_logo`] || '' };
+}
 export function teamFields(side, team) {
   return { [`${side}_team_id`]: team?.id || '', [`${side}_team_name`]: team?.name || 'Por definir', [`${side}_team_logo`]: team?.logo || team?.logo_url || '' };
+}
+
+export function planPlacementMatches(tournament, matches) {
+  if (playoffFormat(tournament.id) === 'U13') return [];
+  return ['oro', 'plata'].flatMap((cup) => {
+    const slot = `${cup}_tercer_puesto_1`;
+    if (matches.some((match) => match.playoff_slot === slot)) return [];
+    const semis = matches.filter((match) => match.cup === cup && match.phase === 'semifinal').sort((a, b) => a.playoff_slot.localeCompare(b.playoff_slot));
+    if (semis.length !== 2) return [];
+    return [{ id: playoffId(tournament.id, slot), tournament_id: tournament.id, playoff_slot: slot, cup, phase: 'tercer_puesto', ...teamFields('home'), ...teamFields('away'), source_match_ids: semis.map((match) => match.id), status: 'programado', home_score: null, away_score: null, date: '', time: '', venue: '', group_name: '', matchday: 0 }];
+  });
 }
 
 export function planPlayoffs(tournament, matches, teams) {
@@ -43,6 +59,7 @@ export function planPlayoffs(tournament, matches, teams) {
       const first = add(cup, 'semifinal', 1, a[n], b[n + 1]);
       const second = add(cup, 'semifinal', 2, b[n], a[n + 1]);
       add(cup, 'final', 1, null, null, [first, second]);
+      add(cup, 'tercer_puesto', 1, null, null, [first, second]);
     });
     add('bronce', 'final', 1, a[4], b[4]);
   }
@@ -51,10 +68,11 @@ export function planPlayoffs(tournament, matches, teams) {
 
 export function advancementUpdates(matches) {
   return matches.filter((m) => m.source_match_ids?.length).flatMap((match) => {
-    const winners = match.source_match_ids.map((id) => winnerOf(matches.find((m) => m.id === id)));
-    const fields = { ...teamFields('home', winners[0]), ...teamFields('away', winners[1]) };
+    const qualifier = match.phase === 'tercer_puesto' ? loserOf : winnerOf;
+    const qualifiers = match.source_match_ids.map((id) => qualifier(matches.find((m) => m.id === id)));
+    const fields = { ...teamFields('home', qualifiers[0]), ...teamFields('away', qualifiers[1]) };
     if (fields.home_team_id === match.home_team_id && fields.away_team_id === match.away_team_id) return [];
-    if (match.status !== 'programado' || match.home_score != null || match.away_score != null) throw new Error('La final ya tiene actividad. No se puede cambiar su clasificación; corregí primero la final.');
+    if (match.status !== 'programado' || match.home_score != null || match.away_score != null) throw new Error('El partido de destino ya tiene actividad. No se puede cambiar su clasificación; corregilo primero.');
     return [{ id: match.id, ...fields }];
   });
 }

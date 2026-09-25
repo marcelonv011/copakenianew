@@ -34,7 +34,7 @@ export const updateMatch = async (id, data) => {
       if (key in data && data[key] !== match[key]) throw new Error('Los equipos y la fase de este cruce se definen por la clasificación.');
     }
     const updated = { ...match, ...data };
-    if ((updated.status !== 'programado' || updated.home_score != null || updated.away_score != null) && (!updated.home_team_id || !updated.away_team_id)) throw new Error('Esperá a que se definan ambos finalistas.');
+    if ((updated.status !== 'programado' || updated.home_score != null || updated.away_score != null) && (!updated.home_team_id || !updated.away_team_id)) throw new Error('Esperá a que se definan ambos equipos.');
     if (updated.status === 'finalizado') {
       const error = validateScore(updated.home_score, updated.away_score);
       if (error) throw new Error(error);

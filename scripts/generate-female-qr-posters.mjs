@@ -1,8 +1,9 @@
 import QRCode from 'qrcode';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const output = new URL('../tests/qr-posters/', import.meta.url);
 await mkdir(output, { recursive: true });
+const logos = `data:image/jpeg;base64,${(await readFile(new URL('../public/logos.jpeg', import.meta.url))).toString('base64')}`;
 const tournaments = [
   { category: 'U13', title: ['COPA COMERCIAL ELDORADO', 'FEMENINO'], id: 'RnnbaaTuiT5jgcvvYAL1' },
   { category: 'U15', title: ['COPA KENIA', 'FEMENINO'], id: 'HSdtj05khaRuTnTi6EUk' },
@@ -16,6 +17,9 @@ for (const tournament of tournaments) {
 function poster(landscape) {
   const width = landscape ? 3840 : 2480;
   const height = landscape ? 2160 : 3508;
+  const logo = landscape
+    ? { x: 150, y: 55, width: 480, height: 350 }
+    : { x: 1010, y: 45, width: 460, height: 335 };
   const cards = tournaments.map((t, i) => {
     const x = landscape ? 150 + i * 1190 : 150;
     const y = landscape ? 580 : 660 + i * 870;
@@ -35,9 +39,15 @@ function poster(landscape) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Arial, sans-serif">
     <defs><linearGradient id="bg" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#0755d8"/><stop offset=".45" stop-color="#291087"/><stop offset=".8" stop-color="#ed24ad"/><stop offset="1" stop-color="#ff894c"/></linearGradient></defs>
     <rect width="${width}" height="${height}" fill="url(#bg)"/><circle cx="${width - 80}" cy="60" r="420" fill="none" stroke="white" stroke-opacity=".1" stroke-width="70"/>
-    <text x="${width / 2}" y="${landscape ? 205 : 230}" fill="white" text-anchor="middle" font-size="${landscape ? 138 : 116}" font-weight="900">BÁSQUET FEMENINO</text>
-    <text x="${width / 2}" y="${landscape ? 345 : 370}" fill="white" text-anchor="middle" font-size="${landscape ? 94 : 83}" font-weight="700">HORARIOS · RESULTADOS · POSICIONES</text>
-    <text x="${width / 2}" y="${landscape ? 455 : 505}" fill="#d9eaff" text-anchor="middle" font-size="${landscape ? 59 : 60}">Elegí tu categoría y escaneá el QR</text>
+    <rect x="${logo.x}" y="${logo.y}" width="${logo.width}" height="${logo.height}" rx="28" fill="white" fill-opacity=".96"/>
+    <image href="${logos}" x="${logo.x + 12}" y="${logo.y + 12}" width="${logo.width - 24}" height="${logo.height - 24}" preserveAspectRatio="xMidYMid meet"/>
+    ${landscape
+      ? `<text x="2230" y="178" fill="white" text-anchor="middle" font-size="105" font-weight="900">¿QUERÉS SABER EL FIXTURE,</text>
+    <text x="2230" y="300" fill="white" text-anchor="middle" font-size="105" font-weight="900">LOS RESULTADOS Y LAS POSICIONES?</text>
+    <text x="2230" y="430" fill="#d9eaff" text-anchor="middle" font-size="59">Elegí tu categoría y escaneá el QR</text>`
+      : `<text x="${width / 2}" y="470" fill="white" text-anchor="middle" font-size="84" font-weight="900">¿QUERÉS SABER EL FIXTURE,</text>
+    <text x="${width / 2}" y="570" fill="white" text-anchor="middle" font-size="84" font-weight="900">LOS RESULTADOS Y LAS POSICIONES?</text>
+    <text x="${width / 2}" y="630" fill="#d9eaff" text-anchor="middle" font-size="48">Elegí tu categoría y escaneá el QR</text>`}
     ${cards}
     <text x="${width / 2}" y="${height - 90}" fill="white" text-anchor="middle" font-size="${landscape ? 49 : 45}">CARTELERAS ACTUALIZADAS</text>
   </svg>`;
