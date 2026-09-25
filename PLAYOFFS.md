@@ -9,7 +9,7 @@ La clasificación usa la función de posiciones existente, sin modificar puntos 
 
 Los horarios y sedes se editan desde cada partido. Al guardar el resultado de una semifinal, su ganador se asigna a la final y su perdedor al partido por el 3.º y 4.º puesto en la misma transacción. Una corrección que cambiaría un participante se rechaza si el partido de destino ya empezó o tiene puntos; primero se debe volver ese partido a programado y vaciar su marcador. Los partidos generados no se borran ni permiten cambiar manualmente equipos o fase.
 
-El cuadro completo se puede descargar como PNG. Cada botón **Instagram · Copa oro/plata/bronce** descarga una imagen independiente de 1080 × 1350. Incluye los logos de Copa Kenia y Copa Comercial Eldorado, los equipos reales, sus escudos disponibles, cruces, fechas, sedes y resultados. Si un escudo externo no permite su descarga, se conserva el nombre del equipo.
+El cuadro completo se puede descargar como PNG. El botón **Instagram · Todos los cuadros** y cada botón **Instagram · Copa oro/plata/bronce** descargan imágenes de 1080 × 1350. Cada pieza muestra únicamente el logo del torneo correspondiente: Copa Kenia o Copa Comercial Eldorado. Incluye los equipos reales, sus escudos disponibles, cruces, fechas, sedes y resultados. En iPhone se usa la hoja nativa Compartir para poder elegir **Guardar imagen**. Si un escudo externo no permite su descarga, se conserva el nombre del equipo.
 
 Los cuadros también aparecen en la cartelera pública del torneo y se actualizan con los resultados. Los partidos aparecen en el fixture y el modo TV cuando tienen fecha asignada.
 

@@ -5,12 +5,13 @@ import { CUPS, loserOf, winnerOf } from '@/lib/playoffs';
 function Lines({ value, x, y, size = 22, max = 25, count = 2, fill = 'white', anchor = 'start' }) {
   return <text x={x} y={y} fill={fill} fontSize={size} fontWeight='700' textAnchor={anchor}>{textLines(value, max, count).map((line, i) => <tspan x={x} dy={i ? size + 4 : 0} key={i}>{line}</tspan>)}</text>;
 }
-function TournamentLogos({ y, left, right, size }) {
-  return <g aria-label='Logos de Copa Kenia y Copa Comercial Eldorado'>
-    <rect x={left} y={y} width={size} height={size} rx='18' fill='white' fillOpacity='.96' />
-    <image href='/images/copa-kenia-logo.png' x={left + 7} y={y + 7} width={size - 14} height={size - 14} preserveAspectRatio='xMidYMid meet' />
-    <rect x={right} y={y} width={size} height={size} rx='18' fill='white' fillOpacity='.96' />
-    <image href='/images/copa-comercial-eldorado-logo.png' x={right + 7} y={y + 7} width={size - 14} height={size - 14} preserveAspectRatio='xMidYMid meet' />
+function TournamentLogo({ tournament, x, y, size }) {
+  const isKenia = /kenia/i.test(tournament.name || '');
+  const label = isKenia ? 'Logo de Copa Kenia' : 'Logo de Copa Comercial Eldorado';
+  const href = isKenia ? '/images/copa-kenia-logo.png' : '/images/copa-comercial-eldorado-logo.png';
+  return <g aria-label={label}>
+    <rect x={x} y={y} width={size} height={size} rx='18' fill='white' fillOpacity='.96' />
+    <image href={href} x={x + 7} y={y + 7} width={size - 14} height={size - 14} preserveAspectRatio='xMidYMid meet' />
   </g>;
 }
 function Game({ match, x, y, label, color }) {
@@ -30,9 +31,59 @@ function Game({ match, x, y, label, color }) {
     <Lines value={`SEDE · ${match?.venue || 'A confirmar'}`} x={x + 16} y={y + 156} size={15} max={43} count={1} fill='#bcd2ed' />
   </g>;
 }
-export default function PlayoffPoster({ tournament, matches, cup: selectedCup }) {
+function CompactGame({ match, x, y, label, color }) {
+  const sourceLabel = match?.phase === 'tercer_puesto' ? 'Perdedor' : 'Ganador';
+  const schedule = match?.date ? `${displayDate(match.date)} · ${match.time || 'Hora a confirmar'}` : 'Fecha y hora a confirmar';
+  return <g>
+    <text x={x} y={y - 9} fill={color} fontSize='15' fontWeight='800'>{label}</text>
+    <rect x={x} y={y} width='450' height='112' rx='12' fill='#091631' stroke={color} strokeWidth='2' />
+    {['home', 'away'].map((side, index) => <g key={side}>
+      <circle cx={x + 24} cy={y + 24 + index * 35} r='15' fill='#263667' />
+      <text x={x + 24} y={y + 30 + index * 35} textAnchor='middle' fill='white' fontSize='14'>{match?.[`${side}_team_name`]?.[0] || '?'}</text>
+      {match?.[`${side}_team_logo`] && <image href={match[`${side}_team_logo`]} x={x + 9} y={y + 9 + index * 35} width='30' height='30' />}
+      <Lines value={match?.[`${side}_team_id`] ? match[`${side}_team_name`] : `${sourceLabel} semifinal ${index + 1}`} x={x + 47} y={y + 29 + index * 35} size={16} max={30} count={1} />
+      <text x={x + 432} y={y + 30 + index * 35} textAnchor='end' fill={color} fontSize='19' fontWeight='800'>{match?.status === 'finalizado' ? match[`${side}_score`] : ''}</text>
+    </g>)}
+    <Lines value={`${schedule} · ${match?.venue || 'Sede a confirmar'}`} x={x + 12} y={y + 101} size={12} max={62} count={1} fill='#bcd2ed' />
+  </g>;
+}
+export default function PlayoffPoster({ tournament, matches, cup: selectedCup, instagramAll = false }) {
   const id = useId().replace(/:/g, '');
   const colors = { oro: '#ffdf69', plata: '#dbe9ff', bronce: '#ffc08a' };
+  if (instagramAll) {
+    return <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1080 1350' role='img' aria-label={`Todos los cuadros de playoffs de ${tournament.name}`} style={{ width: '100%', display: 'block', fontFamily: 'Arial, sans-serif' }}>
+      <defs><linearGradient id={id} x1='0' y1='1' x2='1' y2='0'><stop stopColor='#0758df' /><stop offset='.4' stopColor='#341089' /><stop offset='.78' stopColor='#fa39b5' /><stop offset='1' stopColor='#ff983b' /></linearGradient></defs>
+      <rect width='1080' height='1350' fill={`url(#${id})`} />
+      <circle cx='1030' cy='55' r='230' fill='none' stroke='white' strokeOpacity='.13' strokeWidth='38' />
+      <TournamentLogo tournament={tournament} x={35} y={25} size={120} />
+      <text x='570' y='55' textAnchor='middle' fill='white' fontSize='21' letterSpacing='5'>TORNEO INTERNACIONAL</text>
+      <Lines value={tournament.name} x={570} y={112} max={42} size={36} anchor='middle' />
+      <text x='540' y='190' textAnchor='middle' fill='white' fontSize='50' fontWeight='900'>{tournament.category} · PLAYOFFS</text>
+      <text x='540' y='240' textAnchor='middle' fill='white' fontSize='28' fontWeight='800'>TODOS LOS CUADROS</text>
+      {CUPS.map((cup, index) => {
+        const y = 270 + index * 345;
+        const games = matches.filter((match) => match.cup === cup);
+        const semis = games.filter((match) => match.phase === 'semifinal').sort((a, b) => a.playoff_slot.localeCompare(b.playoff_slot));
+        const final = games.find((match) => match.phase === 'final');
+        const third = games.find((match) => match.phase === 'tercer_puesto');
+        const champion = winnerOf(final);
+        const color = colors[cup];
+        return <g key={cup}>
+          <rect x='25' y={y} width='1030' height='330' rx='28' fill='#131443' fillOpacity='.84' stroke='white' strokeOpacity='.6' strokeWidth='2' />
+          <text x='45' y={y + 38} fill={color} fontSize='29' fontWeight='900'>COPA {cup.toUpperCase()}</text>
+          {semis.length ? <>
+            {semis.map((match, gameIndex) => <CompactGame key={match.id} match={match} x={40} y={y + 70 + gameIndex * 140} label={`SEMIFINAL ${gameIndex + 1}`} color={color} />)}
+            <CompactGame match={final} x={590} y={y + 70} label='FINAL' color={color} />
+            {third && <CompactGame match={third} x={590} y={y + 210} label='3ER Y 4TO PUESTO' color={color} />}
+          </> : <>
+            <CompactGame match={final} x={315} y={y + 95} label='FINAL' color={color} />
+            <Lines value={champion ? `CAMPEÓN · ${champion.name}` : 'CAMPEÓN POR DEFINIR'} x={540} y={y + 260} max={34} size={23} fill={color} anchor='middle' />
+          </>}
+        </g>;
+      })}
+      <text x='540' y='1328' textAnchor='middle' fill='white' fontSize='18'>ORO · PLATA · BRONCE</text>
+    </svg>;
+  }
   if (selectedCup) {
     const color = colors[selectedCup];
     const games = matches.filter((m) => m.cup === selectedCup);
@@ -46,7 +97,7 @@ export default function PlayoffPoster({ tournament, matches, cup: selectedCup })
       <defs><linearGradient id={id} x1='0' y1='1' x2='1' y2='0'><stop stopColor='#0758df' /><stop offset='.4' stopColor='#341089' /><stop offset='.78' stopColor='#fa39b5' /><stop offset='1' stopColor='#ff983b' /></linearGradient></defs>
       <rect width='1080' height='1350' fill={`url(#${id})`} />
       <circle cx='1030' cy='60' r='260' fill='none' stroke='white' strokeOpacity='.13' strokeWidth='40' />
-      <TournamentLogos y={35} left={35} right={915} size={130} />
+      <TournamentLogo tournament={tournament} x={35} y={35} size={130} />
       <text x='540' y='85' textAnchor='middle' fill='white' fontSize='23' letterSpacing='5'>TORNEO INTERNACIONAL</text>
       <Lines value={tournament.name} x={540} y={153} max={34} size={42} anchor='middle' />
       <text x='540' y='290' textAnchor='middle' fill='white' fontSize='65' fontWeight='900'>{tournament.category} · PLAYOFFS</text>
@@ -73,7 +124,7 @@ export default function PlayoffPoster({ tournament, matches, cup: selectedCup })
     <defs><linearGradient id={id} x1='0' y1='1' x2='1' y2='0'><stop stopColor='#0758df' /><stop offset='.4' stopColor='#341089' /><stop offset='.78' stopColor='#fa39b5' /><stop offset='1' stopColor='#ff983b' /></linearGradient></defs>
     <rect width='1080' height='2220' fill={`url(#${id})`} />
     <circle cx='1000' cy='80' r='200' fill='none' stroke='white' strokeOpacity='.12' strokeWidth='35' />
-    <TournamentLogos y={35} left={790} right={930} size={115} />
+    <TournamentLogo tournament={tournament} x={930} y={35} size={115} />
     <text x='50' y='65' fill='white' fontSize='22' letterSpacing='5'>TORNEO INTERNACIONAL</text>
     <Lines value={tournament.name} x={50} y={125} max={34} size={40} />
     <text x='50' y='240' fill='#fff' fontSize='58' fontWeight='900'>{tournament.category} · PLAYOFFS</text>

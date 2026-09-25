@@ -41,6 +41,32 @@ export function saveDataUrl(dataUrl, filename) {
   a.click();
 }
 
+function canvasBlob(canvas) {
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('No se pudo generar la imagen PNG.')), 'image/png'));
+}
+
+async function savePosterBlob(blob, filename) {
+  const file = new File([blob], filename, { type: 'image/png' });
+  const isAppleMobile = /iP(hone|ad|od)/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  if (isAppleMobile && navigator.share && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: filename.replace(/\.png$/i, '') });
+      return;
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 // External logos may not allow CORS. Export their text fallback instead of failing the poster.
 async function embedImage(image) {
   const href = image.getAttribute('href');
@@ -77,7 +103,7 @@ export async function downloadPoster(svg, filename) {
     canvas.width = 1080;
     canvas.height = height;
     canvas.getContext('2d').drawImage(image, 0, 0);
-    saveDataUrl(canvas.toDataURL('image/png'), filename);
+    await savePosterBlob(await canvasBlob(canvas), filename);
   } finally {
     URL.revokeObjectURL(url);
   }
