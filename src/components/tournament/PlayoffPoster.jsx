@@ -107,7 +107,7 @@ export default function PlayoffPoster({ tournament, matches, cup: selectedCup, i
         </> : <>
           <Game match={final} x={80} y={y + 190} label='FINAL' color={color} />
           <path d={`M 490 ${y + 273} H 565`} stroke={color} strokeWidth='4' />
-          <path d={`M 690 ${y + 172} H 810 L 792 ${y + 261} Q 750 ${y + 305} 708 ${y + 261} Z M 750 ${y + 289} V ${y + 319} M 709 ${y + 324} H 791`} fill='none' stroke={color} strokeWidth='8' />
+          <image href='/images/playoff-trophy-stage.png' x='575' y={y + 65} width='360' height='310' preserveAspectRatio='xMidYMid slice' />
           <Lines value={champion ? `CAMPEÓN · ${champion.name}` : 'CAMPEÓN POR DEFINIR'} x={750} y={y + 375} max={27} size={23} fill={color} anchor='middle' />
         </>}
       </g>;

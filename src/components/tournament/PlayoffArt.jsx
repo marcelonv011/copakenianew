@@ -9,18 +9,6 @@ export function ArtText({ text, x, y, size = 22, max = 26, anchor = 'start', col
 export function TournamentLogo({ tournament, x, y, size }) {
   return <image href={/kenia/i.test(tournament.name || '') ? '/images/copa-kenia-logo.png' : '/images/copa-comercial-eldorado-logo.png'} x={x} y={y} width={size} height={size} preserveAspectRatio='xMidYMid meet' />;
 }
-export function TrophyArt({ x, y, scale = 1, color = '#ffda74' }) {
-  const id = useId().replace(/:/g, '');
-  return <g transform={`translate(${x} ${y}) scale(${scale})`}>
-    <defs><linearGradient id={id}><stop stopColor='#65436c' /><stop offset='.25' stopColor={color} /><stop offset='.48' stopColor='#fff9e7' /><stop offset='.65' stopColor={color} /><stop offset='1' stopColor='#805075' /></linearGradient></defs>
-    <ellipse cx='100' cy='330' rx='110' ry='18' fill={color} opacity='.16' />
-    <path d='M 42 30 H 0 V 98 Q 0 160 66 165 M 158 30 H 200 V 98 Q 200 160 134 165' fill='none' stroke={`url(#${id})`} strokeWidth='15' />
-    <path d='M 30 10 H 170 L 151 151 Q 145 190 110 202 V 264 L 156 286 V 302 H 44 V 286 L 90 264 V 202 Q 55 190 49 151 Z' fill={`url(#${id})`} stroke={color} strokeWidth='3' />
-    <path d='M 60 28 L 74 146 Q 78 164 89 170 M 139 27 L 126 150' fill='none' stroke='white' strokeOpacity='.5' strokeWidth='5' />
-    <path d='M 100 56 L 111 81 L 140 84 L 119 104 L 124 132 L 100 119 L 76 132 L 81 104 L 60 84 L 89 81 Z' fill='#794769' opacity='.75' />
-    <rect x='32' y='302' width='136' height='25' rx='4' fill='#171831' stroke={color} strokeWidth='2' />
-  </g>;
-}
 export function ArtBackground({ id, height = 1350 }) {
   return <>
     <defs>
@@ -28,12 +16,10 @@ export function ArtBackground({ id, height = 1350 }) {
       <radialGradient id={`${id}-glow`}><stop stopColor='#ff9cdd' stopOpacity='.8' /><stop offset='1' stopColor='#e943dd' stopOpacity='0' /></radialGradient>
       <pattern id={`${id}-lines`} width='30' height='30' patternUnits='userSpaceOnUse' patternTransform='rotate(35)'><line x1='0' y1='0' x2='0' y2='30' stroke='white' strokeOpacity='.06' strokeWidth='2' /></pattern>
     </defs>
-    <rect width='1080' height={height} fill={`url(#${id}-bg)`} />
-    <rect width='1080' height={height} fill={`url(#${id}-lines)`} />
-    <ellipse cx='540' cy={height * .58} rx='500' ry='600' fill={`url(#${id}-glow)`} />
-    <path d={`M 0 330 L 370 0 M 0 460 L 520 0 M 680 ${height} L 1080 ${height - 380}`} stroke='#75cfff' strokeOpacity='.22' strokeWidth='8' />
-    <rect x='14' y='14' width='1052' height={height - 28} rx='10' fill='none' stroke='#ffb1e2' strokeOpacity='.45' strokeWidth='2' />
-    {Array.from({ length: 24 }, (_, i) => <circle key={i} cx={(i * 163 + 19) % 1080} cy={(i * 277 + 350) % height} r={i % 3 + 1} fill='white' opacity='.35' />)}
+    <rect width='1080' height={height} fill='#070a22' />
+    <image href='/images/playoff-trophy-stage.png' width='1080' height={height} preserveAspectRatio='xMidYMid slice' opacity='.42' />
+    <rect width='1080' height={height} fill='#0a0620' opacity='.28' />
+    <rect x='18' y='18' width='1044' height={height - 36} fill='none' stroke='#f2c7eb' strokeOpacity='.3' />
   </>;
 }
 export function BracketCard({ match, x, y, width = 410, height = 166, label, color = '#ffda74', schedule = true, size = 19 }) {
@@ -61,21 +47,28 @@ export default function InstagramBracket({ tournament, matches, cup }) {
   const color = CUP_COLORS[cup];
   const champion = winnerOf(final);
   return <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1080 1350' role='img' aria-label={`Playoffs copa ${cup} de ${tournament.name}`} style={{ width: '100%', display: 'block', fontFamily: 'Arial, sans-serif' }}>
-    <ArtBackground id={id} />
-    <TournamentLogo tournament={tournament} x={42} y={42} size={180} />
-    <text x='640' y='80' fill='#ffdee9' fontSize='21' textAnchor='middle' letterSpacing='5'>TORNEO INTERNACIONAL</text>
-    <ArtText text={tournament.name.toUpperCase()} x={640} y={133} max={29} size={34} anchor='middle' />
-    <text x='640' y='258' fill='white' fontSize='66' fontWeight='900' textAnchor='middle'>{tournament.category} · PLAYOFFS</text>
-    <path d='M 55 314 H 300 M 780 314 H 1025' stroke={color} strokeWidth='3' />
-    <text x='540' y='333' fill={color} fontSize='49' fontWeight='900' textAnchor='middle'>COPA {cup.toUpperCase()}</text>
-    <TrophyArt x={440} y={405} color={color} />
+    <defs>
+      <linearGradient id={`${id}-fade`}><stop stopColor='black' /><stop offset='.14' stopColor='white' /><stop offset='.86' stopColor='white' /><stop offset='1' stopColor='black' /></linearGradient>
+      <linearGradient id={`${id}-vertical`} x1='0' y1='0' x2='0' y2='1'><stop stopColor='black' /><stop offset='.12' stopColor='white' /><stop offset='.88' stopColor='white' /><stop offset='1' stopColor='black' /></linearGradient>
+      <mask id={`${id}-photo`}><rect x='108' y='110' width='864' height='1080' fill={`url(#${id}-fade)`} /></mask>
+      <mask id={`${id}-edges`}><rect x='108' y='110' width='864' height='1080' fill={`url(#${id}-vertical)`} /></mask>
+    </defs>
+    <rect width='1080' height='1350' fill='#05071b' />
+    <image href='/images/playoff-trophy-stage.png' width='1080' height='1350' opacity='.12' />
+    <g mask={`url(#${id}-edges)`}><image href='/images/playoff-trophy-stage.png' x='108' y='110' width='864' height='1080' mask={`url(#${id}-photo)`} /></g>
+    <TournamentLogo tournament={tournament} x={40} y={30} size={150} />
+    <text x='630' y='48' fill='#facbed' fontSize='18' textAnchor='middle' letterSpacing='5'>TORNEO INTERNACIONAL FEMENINO</text>
+    <ArtText text={tournament.name.replace(/ Femenino/i, '').toUpperCase()} x={630} y={97} max={34} size={35} anchor='middle' />
+    <text x='630' y='191' fill='white' fontSize='70' fontWeight='900' textAnchor='middle' letterSpacing='-2'>{tournament.category} · PLAYOFFS</text>
+    <path d='M 35 237 H 240 M 840 237 H 1045' stroke={color} strokeOpacity='.65' strokeWidth='2' />
+    <text x='540' y='255' fill={color} fontSize='49' fontWeight='900' textAnchor='middle' letterSpacing='4'>COPA {cup.toUpperCase()}</text>
     {semis.length > 0 && <>
-      <path d='M 220 616 V 749 H 860 V 616 M 540 749 V 799' stroke={color} fill='none' strokeWidth='3' />
-      {semis.map((m, i) => <BracketCard key={m.id} match={m} x={40 + i * 640} y={450} width={360} size={17} label={`SEMIFINAL ${i + 1}`} color={color} />)}
+      <path d='M 210 666 V 895 H 315 M 870 666 V 895 H 765 M 315 895 V 922 M 765 895 V 922' stroke={color} fill='none' strokeWidth='2' />
+      {semis.map((m, i) => <BracketCard key={m.id} match={m} x={35 + i * 660} y={500} width={350} size={17} label={`SEMIFINAL ${i + 1}`} color={color} />)}
     </>}
-    <BracketCard match={final} x={335} y={805} label='FINAL' color={color} />
-    <ArtText text={champion ? `CAMPEÓN · ${champion.name}` : '¿QUIÉN SERÁ EL CAMPEÓN?'} x={540} y={1024} max={39} size={26} color={color} anchor='middle' />
-    {third && <BracketCard match={third} x={335} y={1120} label='TERCER Y CUARTO PUESTO' color={color} />}
-    {!third && <text x='540' y='1190' textAnchor='middle' fill='white' fontSize='23' letterSpacing='5'>LA COPA SE DEFINE EN LA CANCHA</text>}
+    <BracketCard match={final} x={315} y={930} width={450} label='FINAL' color={color} />
+    {champion && <text x='540' y='1130' textAnchor='middle' fill={color} fontSize='22' fontWeight='900'>{textLines(`CAMPEÓN · ${champion.name}`, 45, 1)[0]}</text>}
+    {third && <BracketCard match={third} x={315} y={1170} width={450} label='TERCER Y CUARTO PUESTO' color={color} />}
+    {!third && !champion && <text x='540' y='1190' textAnchor='middle' fill={color} fontSize='26' fontWeight='900' letterSpacing='2'>¿QUIÉN SERÁ EL CAMPEÓN?</text>}
   </svg>;
 }
