@@ -16,7 +16,46 @@ export function loserOf(match) {
   return { id: match[`${side}_team_id`], name: match[`${side}_team_name`], logo: match[`${side}_team_logo`] || '' };
 }
 export function teamFields(side, team) {
-  return { [`${side}_team_id`]: team?.id || '', [`${side}_team_name`]: team?.name || 'Por definir', [`${side}_team_logo`]: team?.logo || team?.logo_url || '' };
+  return { [`${side}_team_id`]: team?.id || '', [`${side}_team_name`]: team?.name || 'Resta confirmar', [`${side}_team_logo`]: team?.logo || team?.logo_url || '' };
+}
+
+function standingsScenarios(tournament, matches, teams, groups) {
+  const unresolved = [];
+  for (const group of groups) {
+    const ids = group.standings.map((team) => team.id);
+    for (let a = 0; a < ids.length; a++) for (let b = a + 1; b < ids.length; b++) {
+      const games = matches.filter((match) => match.phase === 'grupos' && match.group_name === group.groupName &&
+        [match.home_team_id, match.away_team_id].includes(ids[a]) && [match.home_team_id, match.away_team_id].includes(ids[b]));
+      if (!games.length || !games.some((match) => winnerOf(match))) {
+        unresolved.push({ groupName: group.groupName, homeId: ids[a], awayId: ids[b], games });
+      }
+    }
+  }
+  if (unresolved.length > 1) throw new Error('Completá los resultados de la fase de grupos hasta que quede como máximo un partido pendiente.');
+  if (!unresolved.length) return [groups];
+
+  const pending = unresolved[0];
+  const pendingIds = new Set(pending.games.map((match) => match.id));
+  const baseMatches = matches.filter((match) => !pendingIds.has(match.id));
+  const teamMap = Object.fromEntries(teams.map((team) => [team.id, team]));
+  // Incluye victorias cortas y amplias para no dar por confirmado un puesto que
+  // todavía podría cambiar por diferencia o puntos a favor.
+  const scores = [[1, 0], [1000, 999], [1000, 0], [0, 1], [999, 1000], [0, 1000]];
+  return scores.map(([homeScore, awayScore], index) => calculateStandingsByGroup([
+    ...baseMatches,
+    {
+      id: `pending-scenario-${index}`,
+      phase: 'grupos',
+      group_name: pending.groupName,
+      home_team_id: pending.homeId,
+      away_team_id: pending.awayId,
+      home_team_name: teamMap[pending.homeId]?.name || '',
+      away_team_name: teamMap[pending.awayId]?.name || '',
+      status: 'finalizado',
+      home_score: homeScore,
+      away_score: awayScore,
+    },
+  ], teams.filter((team) => tournament.team_ids?.includes(team.id)), tournament.group_config?.groupNames || ['Zona A']).filter((group) => group.standings.length));
 }
 
 export function planPlacementMatches(tournament, matches) {
@@ -36,34 +75,57 @@ export function planPlayoffs(tournament, matches, teams) {
   if (matches.some((m) => m.phase !== 'grupos')) throw new Error('Ya hay cruces cargados. No se generarán duplicados.');
   const groups = calculateStandingsByGroup(matches, teams.filter((t) => tournament.team_ids?.includes(t.id)), tournament.group_config?.groupNames || ['Zona A']).filter((g) => g.standings.length);
   if (groups.length !== (category === 'U13' ? 1 : 2) || groups.some((g) => g.standings.length !== (category === 'U13' ? 7 : 5))) throw new Error(category === 'U13' ? 'U13 necesita una zona con 7 equipos.' : 'Esta copa necesita dos zonas de 5 equipos.');
-  // Require every group pairing, not merely the matches that happen to be loaded.
-  for (const group of groups) {
-    const ids = group.standings.map((t) => t.id);
-    for (let a = 0; a < ids.length; a++) for (let b = a + 1; b < ids.length; b++) {
-      const games = matches.filter((m) => m.phase === 'grupos' && m.group_name === group.groupName && [m.home_team_id, m.away_team_id].includes(ids[a]) && [m.home_team_id, m.away_team_id].includes(ids[b]));
-      if (!games.length || games.some((m) => !winnerOf(m))) throw new Error('Completá todos los resultados de la fase de grupos antes de generar los cruces.');
-    }
-  }
+  const scenarios = standingsScenarios(tournament, matches, teams, groups);
+  const seed = (groupIndex, position) => {
+    const candidates = scenarios.map((scenario) => scenario[groupIndex]?.standings[position]);
+    return candidates[0] && candidates.every((candidate) => candidate?.id === candidates[0].id) ? candidates[0] : null;
+  };
+  const seedSource = (groupIndex, position) => ({ group: groups[groupIndex].groupName, position });
   const result = [];
-  function add(cup, phase, number, home, away, sources = []) {
+  function add(cup, phase, number, home, away, sources = [], homeSeed = null, awaySeed = null) {
     const slot = `${cup}_${phase}_${number}`;
-    result.push({ id: playoffId(tournament.id, slot), tournament_id: tournament.id, playoff_slot: slot, cup, phase, ...teamFields('home', home), ...teamFields('away', away), source_match_ids: sources, status: 'programado', home_score: null, away_score: null, date: '', time: '', venue: '', group_name: '', matchday: 0 });
+    result.push({ id: playoffId(tournament.id, slot), tournament_id: tournament.id, playoff_slot: slot, cup, phase, ...teamFields('home', home), ...teamFields('away', away), source_match_ids: sources, home_seed: homeSeed, away_seed: awaySeed, status: 'programado', home_score: null, away_score: null, date: '', time: '', venue: '', group_name: '', matchday: 0 });
     return playoffId(tournament.id, slot);
   }
   if (category === 'U13') {
-    CUPS.forEach((cup, i) => add(cup, 'final', 1, groups[0].standings[i * 2], groups[0].standings[i * 2 + 1]));
+    CUPS.forEach((cup, i) => add(cup, 'final', 1, seed(0, i * 2), seed(0, i * 2 + 1), [], seedSource(0, i * 2), seedSource(0, i * 2 + 1)));
   } else {
-    const [a, b] = groups.map((g) => g.standings);
     ['oro', 'plata'].forEach((cup, i) => {
       const n = i * 2;
-      const first = add(cup, 'semifinal', 1, a[n], b[n + 1]);
-      const second = add(cup, 'semifinal', 2, b[n], a[n + 1]);
+      const first = add(cup, 'semifinal', 1, seed(0, n), seed(1, n + 1), [], seedSource(0, n), seedSource(1, n + 1));
+      const second = add(cup, 'semifinal', 2, seed(1, n), seed(0, n + 1), [], seedSource(1, n), seedSource(0, n + 1));
       add(cup, 'final', 1, null, null, [first, second]);
       add(cup, 'tercer_puesto', 1, null, null, [first, second]);
     });
-    add('bronce', 'final', 1, a[4], b[4]);
+    add('bronce', 'final', 1, seed(0, 4), seed(1, 4), [], seedSource(0, 4), seedSource(1, 4));
   }
   return result;
+}
+
+export function qualificationUpdates(tournament, matches, teams) {
+  const seededMatches = matches.filter((match) => match.playoff_slot && (match.home_seed || match.away_seed));
+  if (!seededMatches.length) return [];
+  const groupMatches = matches.filter((match) => match.phase === 'grupos');
+  const groups = calculateStandingsByGroup(groupMatches, teams.filter((team) => tournament.team_ids?.includes(team.id)), tournament.group_config?.groupNames || ['Zona A']).filter((group) => group.standings.length);
+  for (const group of groups) {
+    const ids = group.standings.map((team) => team.id);
+    for (let a = 0; a < ids.length; a++) for (let b = a + 1; b < ids.length; b++) {
+      const completed = groupMatches.some((match) => match.group_name === group.groupName && winnerOf(match) &&
+        [match.home_team_id, match.away_team_id].includes(ids[a]) && [match.home_team_id, match.away_team_id].includes(ids[b]));
+      if (!completed) return [];
+    }
+  }
+  const standings = Object.fromEntries(groups.map((group) => [group.groupName, group.standings]));
+  return seededMatches.flatMap((match) => {
+    const fields = {};
+    for (const side of ['home', 'away']) {
+      const source = match[`${side}_seed`];
+      if (!match[`${side}_team_id`] && source) Object.assign(fields, teamFields(side, standings[source.group]?.[source.position]));
+    }
+    if (!Object.keys(fields).length) return [];
+    if (match.status !== 'programado' || match.home_score != null || match.away_score != null) throw new Error('El cruce pendiente ya tiene actividad. Corregilo antes de confirmar la clasificación.');
+    return [{ id: match.id, ...fields }];
+  });
 }
 
 export function advancementUpdates(matches) {

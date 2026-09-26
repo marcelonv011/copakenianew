@@ -11,6 +11,7 @@ function Lines({ value, x, y, size = 22, max = 25, count = 2, fill = 'white', an
 function Game({ match, x, y, label, color }) {
   const win = winnerOf(match);
   const sourceLabel = match?.phase === 'tercer_puesto' ? 'Perdedor' : 'Ganador';
+  const pendingLabel = match?.source_match_ids?.length ? `${sourceLabel} semifinal` : 'Resta confirmar';
   return <g>
     <text x={x} y={y - 14} fill={color} fontSize='18' fontWeight='800'>{label}</text>
     <rect x={x} y={y} width='410' height='166' rx='14' fill='#091631' stroke={color} strokeWidth='2' />
@@ -18,7 +19,7 @@ function Game({ match, x, y, label, color }) {
       <circle cx={x + 32} cy={y + 36 + index * 61} r='21' fill='#263667' />
       <text x={x + 32} y={y + 43 + index * 61} textAnchor='middle' fill='white' fontSize='18'>{match?.[`${side}_team_name`]?.[0] || '?'}</text>
       {match?.[`${side}_team_logo`] && <image href={match[`${side}_team_logo`]} x={x + 11} y={y + 15 + index * 61} width='42' height='42' />}
-      <Lines value={match?.[`${side}_team_id`] ? match[`${side}_team_name`] : `${sourceLabel} semifinal ${index + 1}`} x={x + 64} y={y + 28 + index * 61} size={19} max={24} fill={win?.id && win.id === match?.[`${side}_team_id`] ? '#52f0ad' : 'white'} />
+      <Lines value={match?.[`${side}_team_id`] ? match[`${side}_team_name`] : `${pendingLabel}${match?.source_match_ids?.length ? ` ${index + 1}` : ''}`} x={x + 64} y={y + 28 + index * 61} size={19} max={24} fill={win?.id && win.id === match?.[`${side}_team_id`] ? '#52f0ad' : 'white'} />
       <text x={x + 389} y={y + 38 + index * 61} textAnchor='end' fill={color} fontSize='25' fontWeight='800'>{match?.status === 'finalizado' ? match[`${side}_score`] : ''}</text>
     </g>)}
     <text x={x + 16} y={y + 133} fill='#bcd2ed' fontSize='15'>{match?.date ? `${displayDate(match.date)} · ${match.time || 'Hora a confirmar'}` : 'Fecha y hora a confirmar'}</text>
@@ -27,6 +28,7 @@ function Game({ match, x, y, label, color }) {
 }
 function CompactGame({ match, x, y, label, color }) {
   const sourceLabel = match?.phase === 'tercer_puesto' ? 'Perdedor' : 'Ganador';
+  const pendingLabel = match?.source_match_ids?.length ? `${sourceLabel} semifinal` : 'Resta confirmar';
   const schedule = match?.date ? `${displayDate(match.date)} · ${match.time || 'Hora a confirmar'}` : 'Fecha y hora a confirmar';
   return <g>
     <text x={x + 225} y={y - 10} textAnchor='middle' fill={color} fontSize='16' className='poster-title'>{label}</text>
@@ -36,7 +38,7 @@ function CompactGame({ match, x, y, label, color }) {
       <circle cx={x + 24} cy={y + 24 + index * 39} r='15' fill='#263667' />
       <text x={x + 24} y={y + 30 + index * 39} textAnchor='middle' fill='white' fontSize='14'>{match?.[`${side}_team_name`]?.[0] || '?'}</text>
       {match?.[`${side}_team_logo`] && <image href={match[`${side}_team_logo`]} x={x + 9} y={y + 9 + index * 39} width='30' height='30' />}
-      <Lines value={match?.[`${side}_team_id`] ? match[`${side}_team_name`] : `${sourceLabel} semifinal ${index + 1}`} x={x + 225} y={y + 29 + index * 39} size={16} max={34} count={2} centered anchor='middle' />
+      <Lines value={match?.[`${side}_team_id`] ? match[`${side}_team_name`] : `${pendingLabel}${match?.source_match_ids?.length ? ` ${index + 1}` : ''}`} x={x + 225} y={y + 29 + index * 39} size={16} max={34} count={2} centered anchor='middle' />
       <text x={x + 432} y={y + 30 + index * 39} textAnchor='end' fill={color} fontSize='19' fontWeight='800'>{match?.status === 'finalizado' ? match[`${side}_score`] : ''}</text>
     </g>)}
     <text x={x + 225} y={y + 95} textAnchor='middle' fill='#dae0f3' fontSize='11'>{schedule}</text>

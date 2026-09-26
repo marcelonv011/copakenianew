@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { planPlayoffs, planPlacementMatches, advancementUpdates } from './playoffs.js';
+import { planPlayoffs, planPlacementMatches, advancementUpdates, qualificationUpdates } from './playoffs.js';
 import { FEMALE_TOURNAMENTS } from './femaleTournaments.js';
 
 function fixture(index) {
@@ -31,12 +31,26 @@ test('U15 y U17 cruzan zonas para oro y plata con tercer puesto; bronce tiene fi
     assert.equal(planned.find((m) => m.cup === 'plata' && m.phase === 'tercer_puesto').source_match_ids.length, 2);
   }
 });
-test('no genera con resultados incompletos, partidos faltantes o playoffs existentes', () => {
+test('genera con un partido pendiente usando Resta confirmar y bloquea si faltan dos', () => {
   const { tournament, matches, teams } = fixture(0);
-  assert.throws(() => planPlayoffs(tournament, matches.slice(1), teams), /Completá/);
-  assert.throws(() => planPlayoffs(tournament, [{ ...matches[0], status: 'programado' }, ...matches.slice(1)], teams), /Completá/);
-  assert.throws(() => planPlayoffs(tournament, [{ ...matches[0], away_score: null }, ...matches.slice(1)], teams), /Completá/);
+  const missing = planPlayoffs(tournament, matches.slice(1), teams);
+  assert.ok(missing.some((match) => !match.home_team_id || !match.away_team_id));
+  assert.ok(missing.filter((match) => !match.source_match_ids.length).every((match) =>
+    match.home_team_id || match.home_team_name === 'Resta confirmar'));
+  const pending = planPlayoffs(tournament, [{ ...matches[0], status: 'programado' }, ...matches.slice(1)], teams);
+  assert.ok(pending.some((match) => !match.home_team_id || !match.away_team_id));
+  assert.throws(() => planPlayoffs(tournament, matches.slice(2), teams), /máximo un partido/);
   assert.throws(() => planPlayoffs(tournament, [...matches, { phase: 'final' }], teams), /duplicados/);
+});
+test('confirma automáticamente los equipos pendientes al cargar el último resultado', () => {
+  const { tournament, matches, teams } = fixture(1);
+  const pendingGroupMatches = matches.slice(1);
+  const planned = planPlayoffs(tournament, pendingGroupMatches, teams);
+  assert.ok(planned.some((match) => !match.source_match_ids.length && (!match.home_team_id || !match.away_team_id)));
+  assert.deepEqual(qualificationUpdates(tournament, [...pendingGroupMatches, ...planned], teams), []);
+  const updates = qualificationUpdates(tournament, [...matches, ...planned], teams);
+  assert.ok(updates.length > 0);
+  assert.ok(updates.every((update) => update.home_team_id || update.away_team_id));
 });
 test('avanzan ganadores a la final y perdedores al tercer puesto', () => {
   const { tournament, matches, teams } = fixture(1);

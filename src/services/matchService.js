@@ -12,10 +12,24 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
-import { advancementUpdates } from '../lib/playoffs';
+import { advancementUpdates, qualificationUpdates } from '../lib/playoffs';
 import { validateScore } from '../lib/tournamentEntry';
 
 const collectionName = "matches";
+
+async function refreshPendingQualifications(tournamentId) {
+  const tournamentSnapshot = await getDoc(doc(db, 'tournaments', tournamentId));
+  if (!tournamentSnapshot.exists() || !tournamentSnapshot.data().playoff_match_ids?.length) return;
+  const tournament = { ...tournamentSnapshot.data(), id: tournamentId };
+  const [matchSnapshots, teamSnapshots] = await Promise.all([
+    getDocs(query(collection(db, collectionName), where('tournament_id', '==', tournamentId))),
+    Promise.all((tournament.team_ids || []).map((teamId) => getDoc(doc(db, 'teams', teamId)))),
+  ]);
+  const matches = matchSnapshots.docs.map((match) => ({ ...match.data(), id: match.id }));
+  const teams = teamSnapshots.filter((team) => team.exists()).map((team) => ({ ...team.data(), id: team.id }));
+  const updates = qualificationUpdates(tournament, matches, teams);
+  await Promise.all(updates.map(({ id, ...fields }) => updateDoc(doc(db, collectionName, id), fields)));
+}
 
 export const createMatch = async (match) => {
   return await addDoc(collection(db, collectionName), match);
@@ -24,16 +38,23 @@ export const createMatch = async (match) => {
 export const updateMatch = async (id, data) => {
   const ref = doc(db, collectionName, id);
   const snapshot = await getDoc(ref);
-  if (!snapshot.data()?.playoff_slot) return await updateDoc(ref, data);
+  if (!snapshot.data()?.playoff_slot) {
+    await updateDoc(ref, data);
+    if (snapshot.data()?.phase === 'grupos' && data.status === 'finalizado') await refreshPendingQualifications(snapshot.data().tournament_id);
+    return;
+  }
   return runTransaction(db, async (transaction) => {
     const current = await transaction.get(ref);
     const match = { ...current.data(), id };
     const tournament = await transaction.get(doc(db, 'tournaments', match.tournament_id));
     const snapshots = await Promise.all(tournament.data().playoff_match_ids.map((mid) => transaction.get(doc(db, collectionName, mid))));
     for (const key of ['home_team_id', 'away_team_id', 'phase', 'cup', 'playoff_slot', 'tournament_id']) {
-      if (key in data && data[key] !== match[key]) throw new Error('Los equipos y la fase de este cruce se definen por la clasificación.');
+      if (!(key in data) || data[key] === match[key]) continue;
+      const confirmsPendingSeed = ['home_team_id', 'away_team_id'].includes(key) && !match.source_match_ids?.length && !match[key] && data[key];
+      if (!confirmsPendingSeed) throw new Error('Los equipos y la fase de este cruce se definen por la clasificación.');
     }
     const updated = { ...match, ...data };
+    if (updated.home_team_id && updated.home_team_id === updated.away_team_id) throw new Error('Seleccioná dos equipos distintos.');
     if ((updated.status !== 'programado' || updated.home_score != null || updated.away_score != null) && (!updated.home_team_id || !updated.away_team_id)) throw new Error('Esperá a que se definan ambos equipos.');
     if (updated.status === 'finalizado') {
       const error = validateScore(updated.home_score, updated.away_score);

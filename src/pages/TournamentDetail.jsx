@@ -709,7 +709,7 @@ export default function TournamentDetail() {
               <div>
                 <Label>Equipo Local</Label>
                 <Select
-                  disabled={!!editingMatch?.playoff_slot}
+                  disabled={!!editingMatch?.playoff_slot && (!!editingMatch?.source_match_ids?.length || !!editingMatch?.home_team_id)}
                   value={matchForm.home_team_id}
                   onValueChange={(v) =>
                     setMatchForm({ ...matchForm, home_team_id: v })
@@ -731,7 +731,7 @@ export default function TournamentDetail() {
               <div>
                 <Label>Equipo Visitante</Label>
                 <Select
-                  disabled={!!editingMatch?.playoff_slot}
+                  disabled={!!editingMatch?.playoff_slot && (!!editingMatch?.source_match_ids?.length || !!editingMatch?.away_team_id)}
                   value={matchForm.away_team_id}
                   onValueChange={(v) =>
                     setMatchForm({ ...matchForm, away_team_id: v })
