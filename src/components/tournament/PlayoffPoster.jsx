@@ -1,18 +1,10 @@
 import { useId } from 'react';
 import { textLines, displayDate } from '@/lib/poster';
-import { CUPS, loserOf, winnerOf } from '@/lib/playoffs';
+import { CUPS, winnerOf } from '@/lib/playoffs';
+import InstagramBracket, { TournamentLogo, ArtBackground } from './PlayoffArt';
 
 function Lines({ value, x, y, size = 22, max = 25, count = 2, fill = 'white', anchor = 'start' }) {
   return <text x={x} y={y} fill={fill} fontSize={size} fontWeight='700' textAnchor={anchor}>{textLines(value, max, count).map((line, i) => <tspan x={x} dy={i ? size + 4 : 0} key={i}>{line}</tspan>)}</text>;
-}
-function TournamentLogo({ tournament, x, y, size }) {
-  const isKenia = /kenia/i.test(tournament.name || '');
-  const label = isKenia ? 'Logo de Copa Kenia' : 'Logo de Copa Comercial Eldorado';
-  const href = isKenia ? '/images/copa-kenia-logo.png' : '/images/copa-comercial-eldorado-logo.png';
-  return <g aria-label={label}>
-    <rect x={x} y={y} width={size} height={size} rx='18' fill='white' fillOpacity='.96' />
-    <image href={href} x={x + 7} y={y + 7} width={size - 14} height={size - 14} preserveAspectRatio='xMidYMid meet' />
-  </g>;
 }
 function Game({ match, x, y, label, color }) {
   const win = winnerOf(match);
@@ -53,11 +45,11 @@ export default function PlayoffPoster({ tournament, matches, cup: selectedCup, i
   if (instagramAll) {
     return <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1080 1350' role='img' aria-label={`Todos los cuadros de playoffs de ${tournament.name}`} style={{ width: '100%', display: 'block', fontFamily: 'Arial, sans-serif' }}>
       <defs><linearGradient id={id} x1='0' y1='1' x2='1' y2='0'><stop stopColor='#0758df' /><stop offset='.4' stopColor='#341089' /><stop offset='.78' stopColor='#fa39b5' /><stop offset='1' stopColor='#ff983b' /></linearGradient></defs>
-      <rect width='1080' height='1350' fill={`url(#${id})`} />
+      <ArtBackground id={`${id}-art`} />
       <circle cx='1030' cy='55' r='230' fill='none' stroke='white' strokeOpacity='.13' strokeWidth='38' />
       <TournamentLogo tournament={tournament} x={35} y={25} size={120} />
-      <text x='570' y='55' textAnchor='middle' fill='white' fontSize='21' letterSpacing='5'>TORNEO INTERNACIONAL</text>
-      <Lines value={tournament.name} x={570} y={112} max={42} size={36} anchor='middle' />
+      <text x='625' y='55' textAnchor='middle' fill='white' fontSize='21' letterSpacing='5'>TORNEO INTERNACIONAL</text>
+      <Lines value={tournament.name} x={625} y={112} max={34} size={32} anchor='middle' />
       <text x='540' y='190' textAnchor='middle' fill='white' fontSize='50' fontWeight='900'>{tournament.category} · PLAYOFFS</text>
       <text x='540' y='240' textAnchor='middle' fill='white' fontSize='28' fontWeight='800'>TODOS LOS CUADROS</text>
       {CUPS.map((cup, index) => {
@@ -72,6 +64,8 @@ export default function PlayoffPoster({ tournament, matches, cup: selectedCup, i
           <rect x='25' y={y} width='1030' height='330' rx='28' fill='#131443' fillOpacity='.84' stroke='white' strokeOpacity='.6' strokeWidth='2' />
           <text x='45' y={y + 38} fill={color} fontSize='29' fontWeight='900'>COPA {cup.toUpperCase()}</text>
           {semis.length ? <>
+            <path d={`M 490 ${y + 126} H 550 V ${y + 266} H 490 M 550 ${y + 126} H 590`} fill='none' stroke={color} strokeWidth='2' />
+            {third && <path d={`M 550 ${y + 196} H 570 V ${y + 266} H 590`} fill='none' stroke={color} strokeOpacity='.6' strokeDasharray='5 5' strokeWidth='2' />}
             {semis.map((match, gameIndex) => <CompactGame key={match.id} match={match} x={40} y={y + 70 + gameIndex * 140} label={`SEMIFINAL ${gameIndex + 1}`} color={color} />)}
             <CompactGame match={final} x={590} y={y + 70} label='FINAL' color={color} />
             {third && <CompactGame match={third} x={590} y={y + 210} label='3ER Y 4TO PUESTO' color={color} />}
@@ -84,45 +78,10 @@ export default function PlayoffPoster({ tournament, matches, cup: selectedCup, i
       <text x='540' y='1328' textAnchor='middle' fill='white' fontSize='18'>ORO · PLATA · BRONCE</text>
     </svg>;
   }
-  if (selectedCup) {
-    const color = colors[selectedCup];
-    const games = matches.filter((m) => m.cup === selectedCup);
-    const semis = games.filter((m) => m.phase === 'semifinal').sort((a, b) => a.playoff_slot.localeCompare(b.playoff_slot));
-    const final = games.find((m) => m.phase === 'final');
-    const third = games.find((m) => m.phase === 'tercer_puesto');
-    const champion = winnerOf(final);
-    const thirdPlace = winnerOf(third);
-    const fourthPlace = loserOf(third);
-    return <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1080 1350' role='img' aria-label={`Playoffs copa ${selectedCup} de ${tournament.name}`} style={{ width: '100%', display: 'block', fontFamily: 'Arial, sans-serif' }}>
-      <defs><linearGradient id={id} x1='0' y1='1' x2='1' y2='0'><stop stopColor='#0758df' /><stop offset='.4' stopColor='#341089' /><stop offset='.78' stopColor='#fa39b5' /><stop offset='1' stopColor='#ff983b' /></linearGradient></defs>
-      <rect width='1080' height='1350' fill={`url(#${id})`} />
-      <circle cx='1030' cy='60' r='260' fill='none' stroke='white' strokeOpacity='.13' strokeWidth='40' />
-      <TournamentLogo tournament={tournament} x={35} y={35} size={130} />
-      <text x='540' y='85' textAnchor='middle' fill='white' fontSize='23' letterSpacing='5'>TORNEO INTERNACIONAL</text>
-      <Lines value={tournament.name} x={540} y={153} max={34} size={42} anchor='middle' />
-      <text x='540' y='290' textAnchor='middle' fill='white' fontSize='65' fontWeight='900'>{tournament.category} · PLAYOFFS</text>
-      <text x='540' y='370' textAnchor='middle' fill={color} fontSize='55' fontWeight='900'>COPA {selectedCup.toUpperCase()}</text>
-      <rect x='25' y='423' width='1030' height='865' rx='35' fill='#121442' fillOpacity='.8' stroke='white' strokeOpacity='.6' strokeWidth='2' />
-      {semis.length > 0 && <>{semis.map((match, i) => <Game key={match.id} match={match} x={55 + i * 560} y={540} label={`SEMIFINAL ${i + 1}`} color={color} />)}</>}
-      {semis.length > 0 && third ? <>
-        <path d='M 260 706 V 752 H 820 V 706 M 540 752 V 780 H 260 V 810' stroke={color} strokeWidth='4' fill='none' />
-        <Game match={final} x={55} y={810} label='FINAL' color={color} />
-        <Game match={third} x={615} y={810} label='3ER Y 4TO PUESTO' color={color} />
-        <path d='M 260 976 V 1015 M 200 1015 H 320 L 305 1080 Q 260 1118 215 1080 Z M 260 1105 V 1135 M 220 1140 H 300' fill='none' stroke={color} strokeWidth='7' />
-        <Lines value={champion ? `CAMPEÓN · ${champion.name}` : 'CAMPEÓN POR DEFINIR'} x={260} y={1195} max={24} size={24} fill={color} anchor='middle' />
-        <Lines value={thirdPlace ? `3.º · ${thirdPlace.name}` : '3.º POR DEFINIR'} x={820} y={1045} max={28} size={23} fill={color} anchor='middle' />
-        <Lines value={fourthPlace ? `4.º · ${fourthPlace.name}` : '4.º POR DEFINIR'} x={820} y={1105} max={28} size={23} fill='#dbe9ff' anchor='middle' />
-      </> : <>
-        <Game match={final} x={335} y={semis.length ? 810 : 600} label='FINAL' color={color} />
-        <path d={`M 540 ${semis.length ? 976 : 766} V 1020`} stroke={color} strokeWidth='4' />
-        <path d='M 480 1020 H 600 L 582 1100 Q 540 1144 498 1100 Z M 540 1128 V 1160 M 499 1165 H 581' fill='none' stroke={color} strokeWidth='7' />
-        <Lines value={champion ? `CAMPEÓN · ${champion.name}` : 'CAMPEÓN POR DEFINIR'} x={540} y={1215} max={38} size={28} fill={color} anchor='middle' />
-      </>}
-    </svg>;
-  }
+  if (selectedCup) return <InstagramBracket tournament={tournament} matches={matches} cup={selectedCup} />;
   return <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1080 2220' role='img' aria-label={`Cuadro de playoffs de ${tournament.name}`} style={{ width: '100%', display: 'block', fontFamily: 'Arial, sans-serif' }}>
     <defs><linearGradient id={id} x1='0' y1='1' x2='1' y2='0'><stop stopColor='#0758df' /><stop offset='.4' stopColor='#341089' /><stop offset='.78' stopColor='#fa39b5' /><stop offset='1' stopColor='#ff983b' /></linearGradient></defs>
-    <rect width='1080' height='2220' fill={`url(#${id})`} />
+    <ArtBackground id={`${id}-art`} height={2220} />
     <circle cx='1000' cy='80' r='200' fill='none' stroke='white' strokeOpacity='.12' strokeWidth='35' />
     <TournamentLogo tournament={tournament} x={930} y={35} size={115} />
     <text x='50' y='65' fill='white' fontSize='22' letterSpacing='5'>TORNEO INTERNACIONAL</text>
@@ -143,7 +102,7 @@ export default function PlayoffPoster({ tournament, matches, cup: selectedCup, i
           <path d={`M 465 ${y + 163} H 515 V ${y + 378} H 465 M 515 ${y + 271} H 585`} fill='none' stroke={color} strokeWidth='4' />
           {semis.map((match, i) => <Game key={match.id} match={match} x={55} y={y + 80 + i * 215} label={`SEMIFINAL ${i + 1}`} color={color} />)}
           <Game match={final} x={585} y={y + 188} label='FINAL' color={color} />
-          <Lines value={champion ? `CAMPEÓN · ${champion.name}` : 'CAMPEÓN POR DEFINIR'} x={790} y={y + 375} max={28} size={20} fill={color} anchor='middle' />
+          <Lines value={champion ? `CAMPEÓN · ${champion.name}` : 'CAMPEÓN POR DEFINIR'} x={790} y={y + 375} max={28} size={17} fill={color} anchor='middle' />
           {third && <Game match={third} x={585} y={y + 416} label='3ER Y 4TO PUESTO' color={color} />}
         </> : <>
           <Game match={final} x={80} y={y + 190} label='FINAL' color={color} />

@@ -1,5 +1,7 @@
 # Carteleras y pantalla del evento
 
+Cuando un torneo ya tiene partidos de playoffs, sus diapositivas muestran las llaves de cada copa (oro, plata y bronce) con el fixture de la fecha debajo, en lugar de posiciones de grupos. Incluyen final y tercer/cuarto puesto cuando corresponde. El fixture se pagina de a tres partidos para mantener la legibilidad. Las llaves muestran el cuadro completo; los horarios inferiores siguen filtrados por el día seleccionado. Los torneos sin playoffs conservan fixture y posiciones de grupos.
+
 Abrir https://copakenianew.vercel.app/pantalla en el navegador de la TV o de una computadora conectada por HDMI.
 
 La presentación inicia sola y cambia cada 15 segundos. Recorre U13, U15 y U17 femeninos: partidos del día y posiciones acumuladas por grupo. Divide automáticamente las listas largas en varias diapositivas. Los datos se actualizan al cargar resultados, usando el mismo cálculo de posiciones de la administración.

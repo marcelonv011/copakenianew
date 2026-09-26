@@ -2,6 +2,23 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildTvSlides, localDay, slideSeconds } from './tvSlides.js';
 import { FEMALE_TOURNAMENTS } from './femaleTournaments.js';
+import { phaseLabel, cupBracket } from './playoffDisplay.js';
+
+test('playoffs reemplazan grupos y paginan todos los partidos incluido plata tercer puesto', () => {
+  const id = FEMALE_TOURNAMENTS[1].id;
+  const matches = ['oro', 'plata', 'bronce'].flatMap((cup) => (cup === 'bronce' ? ['final'] : ['semifinal', 'semifinal', 'final', 'tercer_puesto']).map((phase, i) => ({ id: `${cup}-${i}`, cup, phase, date: '2026-09-26', time: `${10 + i}:00` })));
+  matches.push({ id: 'grupos', phase: 'grupos', date: '2026-09-26' });
+  const entries = { [id]: { tournament: {}, matches, teams: [] } };
+  const slides = buildTvSlides(entries, '2026-09-26').filter((s) => s.cup.id === id);
+  assert.deepEqual(slides.map((s) => s.type), Array(5).fill('playoffs'));
+  assert.deepEqual(slides.map((s) => s.rows.length), [3, 1, 3, 1, 1]);
+  assert.equal(slides[3].rows[0].phase, 'tercer_puesto');
+  assert.equal(cupBracket(slides[3].bracket, 'plata').third.id, 'plata-3');
+  assert.equal(phaseLabel(slides[3].rows[0]), 'Tercer puesto');
+  const tomorrow = buildTvSlides(entries, '2026-09-27').filter((s) => s.cup.id === id);
+  assert.equal(tomorrow.length, 3);
+  assert.ok(tomorrow.every((s) => s.rows.length === 0 && s.bracket.length > 0));
+});
 
 test('recorre las tres copas con fixture paginado y posiciones acumuladas completas', () => {
   const entries = Object.fromEntries(FEMALE_TOURNAMENTS.map((cup) => {

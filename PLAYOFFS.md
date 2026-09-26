@@ -1,5 +1,7 @@
 # Cruces de las copas femeninas
 
+Las imágenes individuales para Instagram usan una composición con trofeo central, llaves, los colores femeninos y escudos transparentes. Conservan 1080 × 1350 e incluyen un espacio independiente para tercer/cuarto puesto. Los PNG de los escudos originales están en `public/images/copa-kenia-logo.png` y `public/images/copa-comercial-eldorado-logo.png`; su transparencia no debe reemplazarse por un recuadro blanco.
+
 En cada torneo, abrir **Playoffs → Generar cruces**. El botón requiere que estén cargados y finalizados todos los encuentros de grupos, con resultados válidos.
 
 - U13: finales oro (1.º–2.º), plata (3.º–4.º) y bronce (5.º–6.º). El 7.º termina su participación.

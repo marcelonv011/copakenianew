@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { buildTvSlides } from '@/lib/tvSlides';
 import { displayDate, matchDisplay, textLines } from '@/lib/poster';
+import TvPlayoffs from './TvPlayoffs';
+import { phaseLabel } from '@/lib/playoffDisplay';
 
 function Name({ value, x, y, max = 25, size = 32 }) {
   return <text x={x} y={y} fill='white' fontSize={size} fontWeight='700'>{textLines(value, max).map((line, index) => <tspan key={index} x={x} dy={index ? size + 5 : 0}>{line}</tspan>)}</text>;
@@ -30,7 +32,7 @@ export default function TvPlayer({ entries, date, seconds = 15, qrs = {}, online
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [slides.length]);
-  const title = slide.type === 'standings' ? `POSICIONES · ${slide.group || 'GRUPOS'}` : 'FIXTURE Y RESULTADOS';
+  const title = slide.type === 'playoffs' ? `PLAYOFFS · ${slide.tier === 'playoffs' ? 'LLAVES' : `COPA ${slide.tier.toUpperCase()}`}` : slide.type === 'standings' ? `POSICIONES · ${slide.group || 'GRUPOS'}` : 'FIXTURE Y RESULTADOS';
   return <main aria-label='Presentación automática de las copas femeninas' style={{ width: '100vw', height: '100dvh', background: '#020617', overflow: 'hidden', display: 'grid', placeItems: 'center' }}>
     <svg viewBox='0 0 1920 1080' role='img' aria-label={`${slide.cup.category} · ${slide.cup.name} · ${title} · Diapositiva ${index + 1} de ${slides.length}`} style={{ width: '100%', height: '100%', fontFamily: 'Arial, sans-serif' }}>
       <defs><linearGradient id='tv-bg' x1='0' y1='1' x2='1' y2='0'><stop stopColor='#0755d8' /><stop offset='.45' stopColor='#291087' /><stop offset='.8' stopColor='#ed24ad' /><stop offset='1' stopColor='#ff894c' /></linearGradient></defs>
@@ -42,6 +44,7 @@ export default function TvPlayer({ entries, date, seconds = 15, qrs = {}, online
       <text x='65' y='180' fill='white' fontSize='40' fontWeight='800'>{title}</text>
       <text x='65' y='226' fill='#d7e9ff' fontSize='27'>{slide.type === 'standings' ? 'Acumulado del torneo' : displayDate(date, true)}</text>
       <rect x='50' y='263' width='1820' height='651' rx='20' fill='#031222' />
+      {slide.type === 'playoffs' && <TvPlayoffs slide={slide} />}
       {slide.type === 'message' && <text x='960' y='580' fill='white' textAnchor='middle' fontSize='38'>{slide.message}</text>}
       {slide.type === 'fixture' && <g>
         <rect x='50' y='263' width='1820' height='58' rx='18' fill='#0757a3' />
@@ -57,7 +60,7 @@ export default function TvPlayer({ entries, date, seconds = 15, qrs = {}, online
             <text x='1340' y={y + 44} textAnchor='middle' fill={display.result ? '#33e393' : 'white'} fontSize='40' fontWeight='800'>{display.result || 'VS'}</text>
             <text x='1340' y={y + 78} textAnchor='middle' fill='#a6c5df' fontSize='18'>{display.label}</text>
             <Name value={match.venue || 'A confirmar'} x={1530} y={y + 31} max={21} size={25} />
-            <text x='1530' y={y + 83} fill='#a6c5df' fontSize='19'>{textLines(match.cup ? `Copa ${match.cup} · ${match.phase}` : match.group_name || match.phase || '', 28, 1)[0]}</text>
+            <text x='1530' y={y + 83} fill='#a6c5df' fontSize='19'>{textLines(match.cup ? `Copa ${match.cup} · ${phaseLabel(match)}` : match.group_name || phaseLabel(match), 32, 1)[0]}</text>
           </g>;
         })}
         {!slide.rows.length && <text x='960' y='580' fill='white' textAnchor='middle' fontSize='38'>No hay partidos programados para esta fecha.</text>}

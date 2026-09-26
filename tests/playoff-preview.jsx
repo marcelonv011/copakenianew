@@ -1,6 +1,11 @@
 import { createRoot } from 'react-dom/client';
 import PlayoffImage from '../src/components/tournament/PlayoffImage';
+import PlayoffPoster from '../src/components/tournament/PlayoffPoster';
+import TvPlayer from '../src/components/tournament/TvPlayer';
+import { FEMALE_TOURNAMENTS } from '../src/lib/femaleTournaments';
 import '../src/index.css';
 const tournament = { id: 'prueba', name: 'Copa Comercial Eldorado Femenino', category: 'U17' };
 const matches = ['oro', 'plata', 'bronce'].flatMap((cup) => (cup === 'bronce' ? ['final'] : ['semifinal_1', 'semifinal_2', 'final', 'tercer_puesto']).map((slot, index) => ({ id: `${cup}_${slot}`, cup, playoff_slot: `${cup}_${slot}`, phase: slot.startsWith('semifinal') ? 'semifinal' : slot === 'tercer_puesto' ? 'tercer_puesto' : 'final', home_team_id: !slot.startsWith('semifinal') && cup !== 'bronce' ? '' : 'a', away_team_id: !slot.startsWith('semifinal') && cup !== 'bronce' ? '' : 'b', home_team_name: 'Equipo de nombre extenso A', away_team_name: 'Equipo de nombre extenso B', date: '2026-09-26', time: `${18 + index}:00`, venue: index % 2 ? 'Polideportivo Iguazú' : 'Club Social Eldorado', status: 'programado' })));
-createRoot(document.getElementById('root')).render(<div style={{ maxWidth: 750, margin: 'auto' }}><PlayoffImage tournament={tournament} matches={matches} /></div>);
+const mode = new URLSearchParams(window.location.search).get('mode');
+const entries = Object.fromEntries(FEMALE_TOURNAMENTS.map((cup) => [cup.id, { tournament: cup, matches, teams: [], received: 'PRUEBA', cached: false }]));
+createRoot(document.getElementById('root')).render(mode === 'tv' ? <TvPlayer entries={entries} date='2026-09-26' seconds={120} /> : <div style={{ maxWidth: 750, margin: 'auto' }}>{mode === 'plata' ? <PlayoffPoster tournament={tournament} matches={matches} cup='plata' /> : <PlayoffImage tournament={tournament} matches={matches} />}</div>);
