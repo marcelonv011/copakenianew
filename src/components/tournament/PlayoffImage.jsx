@@ -9,6 +9,7 @@ export default function PlayoffImage({ tournament, matches }) {
   const instagramAll = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState('all');
   const exports = useRef({});
   return <section className='space-y-3'>
     <Button disabled={busy} onClick={async () => {
@@ -31,6 +32,8 @@ export default function PlayoffImage({ tournament, matches }) {
     <p className='text-sm text-muted-foreground'>Instagram: imágenes verticales de 1080 × 1350. En iPhone se abre el menú Compartir: elegí “Guardar imagen”.</p>
     <div style={{ display: 'none' }} aria-hidden='true'><div ref={instagramAll}><PlayoffPoster tournament={tournament} matches={matches} instagramAll /></div>{CUPS.map((cup) => <div key={cup} ref={(element) => { exports.current[cup] = element; }}><PlayoffPoster tournament={tournament} matches={matches} cup={cup} /></div>)}</div>
     {error && <p role='alert'>{error}</p>}
-    <div ref={ref} className='max-w-3xl mx-auto rounded-xl overflow-hidden'><PlayoffPoster tournament={tournament} matches={matches} /></div>
+    <div ref={ref} style={{ display: 'none' }} aria-hidden='true'><PlayoffPoster tournament={tournament} matches={matches} /></div>
+    <label className='block text-sm'>Vista previa <select value={preview} onChange={(event) => setPreview(event.target.value)} className='ml-2 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white'><option value='all'>Todos los cuadros</option>{CUPS.map((cup) => <option key={cup} value={cup}>Copa {cup}</option>)}</select></label>
+    <div className='max-w-3xl mx-auto rounded-xl overflow-hidden'><PlayoffPoster tournament={tournament} matches={matches} instagramAll={preview === 'all'} cup={preview === 'all' ? undefined : preview} /></div>
   </section>;
 }
