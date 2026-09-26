@@ -4,8 +4,9 @@ import { textLines, displayDate } from '@/lib/poster';
 import { CUPS, winnerOf } from '@/lib/playoffs';
 import InstagramBracket, { TournamentLogo, ArtBackground } from './PlayoffArt';
 
-function Lines({ value, x, y, size = 22, max = 25, count = 2, fill = 'white', anchor = 'start' }) {
-  return <text x={x} y={y} fill={fill} fontSize={size} fontWeight='700' textAnchor={anchor}>{textLines(value, max, count).map((line, i) => <tspan x={x} dy={i ? size + 4 : 0} key={i}>{line}</tspan>)}</text>;
+function Lines({ value, x, y, size = 22, max = 25, count = 2, fill = 'white', anchor = 'start', centered = false }) {
+  const lines = textLines(value, max, count);
+  return <text x={x} y={centered ? y - (lines.length - 1) * (size + 4) / 2 : y} fill={fill} fontSize={size} fontWeight='700' textAnchor={anchor}>{lines.map((line, i) => <tspan x={x} dy={i ? size + 4 : 0} key={i}>{line}</tspan>)}</text>;
 }
 function Game({ match, x, y, label, color }) {
   const win = winnerOf(match);
@@ -28,16 +29,18 @@ function CompactGame({ match, x, y, label, color }) {
   const sourceLabel = match?.phase === 'tercer_puesto' ? 'Perdedor' : 'Ganador';
   const schedule = match?.date ? `${displayDate(match.date)} · ${match.time || 'Hora a confirmar'}` : 'Fecha y hora a confirmar';
   return <g>
-    <text x={x} y={y - 9} fill={color} fontSize='15' fontWeight='800'>{label}</text>
-    <rect x={x} y={y} width='450' height='112' rx='12' fill='#091631' stroke={color} strokeWidth='2' />
+    <text x={x + 225} y={y - 10} textAnchor='middle' fill={color} fontSize='16' className='poster-title'>{label}</text>
+    <rect x={x} y={y} width='450' height='112' rx='14' fill='#0b102b' fillOpacity='.92' stroke={color} strokeOpacity='.65' />
+    <path d={`M ${x + 52} ${y + 43} H ${x + 398} M ${x + 16} ${y + 82} H ${x + 434}`} stroke={color} strokeOpacity='.16' />
     {['home', 'away'].map((side, index) => <g key={side}>
-      <circle cx={x + 24} cy={y + 24 + index * 35} r='15' fill='#263667' />
-      <text x={x + 24} y={y + 30 + index * 35} textAnchor='middle' fill='white' fontSize='14'>{match?.[`${side}_team_name`]?.[0] || '?'}</text>
-      {match?.[`${side}_team_logo`] && <image href={match[`${side}_team_logo`]} x={x + 9} y={y + 9 + index * 35} width='30' height='30' />}
-      <Lines value={match?.[`${side}_team_id`] ? match[`${side}_team_name`] : `${sourceLabel} semifinal ${index + 1}`} x={x + 47} y={y + 29 + index * 35} size={16} max={30} count={1} />
-      <text x={x + 432} y={y + 30 + index * 35} textAnchor='end' fill={color} fontSize='19' fontWeight='800'>{match?.status === 'finalizado' ? match[`${side}_score`] : ''}</text>
+      <circle cx={x + 24} cy={y + 24 + index * 39} r='15' fill='#263667' />
+      <text x={x + 24} y={y + 30 + index * 39} textAnchor='middle' fill='white' fontSize='14'>{match?.[`${side}_team_name`]?.[0] || '?'}</text>
+      {match?.[`${side}_team_logo`] && <image href={match[`${side}_team_logo`]} x={x + 9} y={y + 9 + index * 39} width='30' height='30' />}
+      <Lines value={match?.[`${side}_team_id`] ? match[`${side}_team_name`] : `${sourceLabel} semifinal ${index + 1}`} x={x + 225} y={y + 29 + index * 39} size={16} max={34} count={2} centered anchor='middle' />
+      <text x={x + 432} y={y + 30 + index * 39} textAnchor='end' fill={color} fontSize='19' fontWeight='800'>{match?.status === 'finalizado' ? match[`${side}_score`] : ''}</text>
     </g>)}
-    <Lines value={`${schedule} · ${match?.venue || 'Sede a confirmar'}`} x={x + 12} y={y + 101} size={12} max={62} count={1} fill='#bcd2ed' />
+    <text x={x + 225} y={y + 95} textAnchor='middle' fill='#dae0f3' fontSize='11'>{schedule}</text>
+    <Lines value={match?.venue || 'Sede a confirmar'} x={x + 225} y={y + 108} anchor='middle' size={10} max={65} count={1} fill='#aab7d4' />
   </g>;
 }
 export default function PlayoffPoster({ tournament, matches, cup: selectedCup, instagramAll = false }) {
@@ -50,10 +53,10 @@ export default function PlayoffPoster({ tournament, matches, cup: selectedCup, i
       <ArtBackground id={`${id}-art`} />
       <circle cx='1030' cy='55' r='230' fill='none' stroke='white' strokeOpacity='.13' strokeWidth='38' />
       <TournamentLogo tournament={tournament} x={35} y={25} size={120} />
-      <text x='625' y='55' textAnchor='middle' fill='white' fontSize='21' letterSpacing='5'>TORNEO INTERNACIONAL</text>
-      <Lines value={tournament.name} x={625} y={112} max={34} size={32} anchor='middle' />
+      <text x='540' y='51' textAnchor='middle' fill='#facbed' fontSize='16' letterSpacing='4'>TORNEO INTERNACIONAL</text>
+      <Lines value={tournament.name.replace(/ Femenino/i, '').toUpperCase()} x={540} y={94} max={30} size={28} anchor='middle' />
       <text x='540' y='190' textAnchor='middle' fill='white' fontSize='50' className='poster-title' fontWeight='600'>{tournament.category} · PLAYOFFS</text>
-      <text x='540' y='240' textAnchor='middle' fill='white' fontSize='28' fontWeight='800'>TODOS LOS CUADROS</text>
+      <text x='540' y='240' textAnchor='middle' fill='#e6c9e9' fontSize='17' letterSpacing='4'>FEMENINO · TODOS LOS CUADROS</text>
       {CUPS.map((cup, index) => {
         const y = 270 + index * 345;
         const games = matches.filter((match) => match.cup === cup);
@@ -63,8 +66,9 @@ export default function PlayoffPoster({ tournament, matches, cup: selectedCup, i
         const champion = winnerOf(final);
         const color = colors[cup];
         return <g key={cup}>
-          <rect x='25' y={y} width='1030' height='330' rx='28' fill='#131443' fillOpacity='.84' stroke='white' strokeOpacity='.6' strokeWidth='2' />
-          <text x='45' y={y + 38} fill={color} fontSize='29' className='poster-title' fontWeight='600'>COPA {cup.toUpperCase()}</text>
+          <rect x='25' y={y} width='1030' height='330' rx='22' fill='#15102f' fillOpacity='.78' stroke={color} strokeOpacity='.38' />
+          <path d={`M 60 ${y + 30} H 380 M 700 ${y + 30} H 1020`} stroke={color} strokeOpacity='.4' />
+          <text x='540' textAnchor='middle' y={y + 40} fill={color} fontSize='32' className='poster-title' fontWeight='600'>COPA {cup.toUpperCase()}</text>
           {semis.length ? <>
             <path d={`M 490 ${y + 126} H 550 V ${y + 266} H 490 M 550 ${y + 126} H 590`} fill='none' stroke={color} strokeWidth='2' />
             {third && <path d={`M 550 ${y + 196} H 570 V ${y + 266} H 590`} fill='none' stroke={color} strokeOpacity='.6' strokeDasharray='5 5' strokeWidth='2' />}
