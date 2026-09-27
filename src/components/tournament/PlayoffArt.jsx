@@ -1,7 +1,7 @@
 import PosterTypography from './PosterTypography';
 import { useId } from 'react';
 import { textLines, displayDate } from '@/lib/poster';
-import { winnerOf } from '@/lib/playoffs';
+import { loserOf, winnerOf } from '@/lib/playoffs';
 import { cupBracket, isThirdPlace, CUP_COLORS } from '@/lib/playoffDisplay';
 
 export function ArtText({ text, x, y, size = 22, max = 26, anchor = 'start', color = 'white' }) {
@@ -42,6 +42,81 @@ export function BracketCard({ match, x, y, width = 410, height = 166, label, col
     {schedule && <><text x={centered ? x + width / 2 : x + 14} textAnchor={centered ? 'middle' : 'start'} y={y + 137} fill='#ced9f1' fontSize='14'>{match?.date ? `${displayDate(match.date)} · ${match.time || 'Hora a confirmar'}` : 'Fecha y hora a confirmar'}</text><text x={centered ? x + width / 2 : x + 14} textAnchor={centered ? 'middle' : 'start'} y={y + 156} fill='#ced9f1' fontSize='14'>{textLines(match?.venue || 'Sede a confirmar', Math.floor((width - 28) / 8), 1)[0]}</text></>}
   </g>;
 }
+
+export function GoldChampionPoster({ tournament, matches }) {
+  const id = useId().replace(/:/g, '');
+  const final = matches.find((match) => match.cup === 'oro' && match.phase === 'final');
+  const champion = winnerOf(final);
+  const runnerUp = loserOf(final);
+  const championName = champion?.name || 'Campeón a confirmar';
+  const initial = championName.trim().charAt(0).toUpperCase() || '★';
+  const result = final ? `${final.home_team_name} ${final.home_score} – ${final.away_score} ${final.away_team_name}` : '';
+  const schedule = final?.date
+    ? `${displayDate(final.date)}${final.time ? ` · ${final.time}` : ''}${final.venue ? ` · ${final.venue}` : ''}`
+    : (final?.venue || '');
+
+  return <svg className='playoff-type' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1080 1350' role='img' aria-label={`Campeón de Copa Oro de ${tournament.name}`} style={{ width: '100%', display: 'block', fontFamily: 'PosterInter, sans-serif' }}>
+    <PosterTypography />
+    <defs>
+      <linearGradient id={`${id}-champion-bg`} x1='0' y1='1' x2='1' y2='0'>
+        <stop stopColor='#071832' />
+        <stop offset='.42' stopColor='#301054' />
+        <stop offset='.75' stopColor='#97166e' />
+        <stop offset='1' stopColor='#ef6b58' />
+      </linearGradient>
+      <radialGradient id={`${id}-gold-glow`}>
+        <stop stopColor='#fff2ad' stopOpacity='.95' />
+        <stop offset='.35' stopColor='#e9b93d' stopOpacity='.48' />
+        <stop offset='1' stopColor='#e9b93d' stopOpacity='0' />
+      </radialGradient>
+      <linearGradient id={`${id}-gold`} x1='0' y1='0' x2='0' y2='1'>
+        <stop stopColor='#fff4b8' />
+        <stop offset='.5' stopColor='#ffd361' />
+        <stop offset='1' stopColor='#c98b20' />
+      </linearGradient>
+      <filter id={`${id}-shadow`} x='-30%' y='-30%' width='160%' height='160%'>
+        <feDropShadow dx='0' dy='12' stdDeviation='18' floodColor='#000000' floodOpacity='.55' />
+      </filter>
+      <pattern id={`${id}-sparkles`} width='90' height='90' patternUnits='userSpaceOnUse'>
+        <circle cx='12' cy='14' r='2' fill='#fff4bd' opacity='.6' />
+        <circle cx='68' cy='51' r='1.5' fill='white' opacity='.45' />
+      </pattern>
+    </defs>
+    <rect width='1080' height='1350' fill={`url(#${id}-champion-bg)`} />
+    <image href='/images/playoff-trophy-stage.png' x='0' y='0' width='1080' height='1350' preserveAspectRatio='xMidYMid slice' opacity='.22' />
+    <rect width='1080' height='1350' fill='#040918' opacity='.23' />
+    <rect width='1080' height='1350' fill={`url(#${id}-sparkles)`} />
+    <circle cx='540' cy='690' r='370' fill={`url(#${id}-gold-glow)`} />
+    <path d='M 95 1090 C 300 1025, 780 1025, 985 1090 L 985 1350 L 95 1350 Z' fill='#050b1f' fillOpacity='.86' />
+    <rect x='24' y='24' width='1032' height='1302' rx='18' fill='none' stroke={`url(#${id}-gold)`} strokeWidth='3' opacity='.8' />
+
+    <TournamentLogo tournament={tournament} x={42} y={38} size={128} />
+    <text x='540' y='58' fill='#fae8f5' fontSize='15' textAnchor='middle' letterSpacing='3'>TORNEO INTERNACIONAL FEMENINO</text>
+    <ArtText text={tournament.name.replace(/ Femenino/i, '').toUpperCase()} x={540} y={107} max={30} size={31} anchor='middle' />
+    <text x='540' y='157' fill='#dce6ff' fontSize='23' textAnchor='middle' fontWeight='700' letterSpacing='4'>{tournament.category}</text>
+
+    <path d='M 104 229 H 338 M 742 229 H 976' stroke='#f8d870' strokeWidth='2' opacity='.75' />
+    <text x='540' y='245' fill={`url(#${id}-gold)`} fontSize='35' className='poster-title' fontWeight='600' textAnchor='middle' letterSpacing='7'>COPA ORO</text>
+    <text x='540' y='342' fill='white' fontSize='80' className='poster-title' fontWeight='600' textAnchor='middle' letterSpacing='2'>CAMPEONAS</text>
+
+    <g filter={`url(#${id}-shadow)`}>
+      <circle cx='540' cy='650' r='222' fill='#08142c' stroke={`url(#${id}-gold)`} strokeWidth='8' />
+      <circle cx='540' cy='650' r='198' fill='#ffffff' fillOpacity='.08' stroke='#fff0aa' strokeOpacity='.28' strokeWidth='2' />
+      <text x='540' y='716' fill='#fff0aa' opacity='.55' fontSize='190' textAnchor='middle' className='poster-title' fontWeight='600'>{initial}</text>
+      {champion?.logo && <image href={champion.logo} x='372' y='482' width='336' height='336' preserveAspectRatio='xMidYMid meet' />}
+    </g>
+    <path d='M 390 448 L 425 390 L 483 430 L 540 370 L 597 430 L 655 390 L 690 448 Z' fill={`url(#${id}-gold)`} stroke='#fff1a9' strokeWidth='3' filter={`url(#${id}-shadow)`} />
+
+    <ArtText text={championName.toUpperCase()} x={540} y={960} max={26} size={48} anchor='middle' color='#ffffff' />
+    <text x='540' y='1061' fill='#f4d56d' fontSize='22' className='poster-title' fontWeight='600' textAnchor='middle' letterSpacing='4'>CAMPEÓN COPA ORO</text>
+
+    {result && <ArtText text={`FINAL · ${result}`} x={540} y={1151} max={54} size={22} anchor='middle' color='#ffffff' />}
+    {runnerUp && <text x='540' y='1203' fill='#becae3' fontSize='17' textAnchor='middle'>Subcampeón: {runnerUp.name}</text>}
+    {schedule && <ArtText text={schedule} x={540} y={1251} max={64} size={17} anchor='middle' color='#d9e2f3' />}
+    <text x='540' y='1302' fill='#f4d56d' fontSize='15' textAnchor='middle' letterSpacing='4'>LA COPA TIENE CAMPEÓN</text>
+  </svg>;
+}
+
 export default function InstagramBracket({ tournament, matches, cup }) {
   const id = useId().replace(/:/g, '');
   const { semis, final, third } = cupBracket(matches, cup);
