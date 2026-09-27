@@ -1,23 +1,38 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { updateMatch } from '@/services/matchService';
+import { isQuotaError, updateMatch } from '@/services/matchService';
+import { saveEmergencyResult } from '@/lib/emergencyResults';
 import { validateScore } from '@/lib/tournamentEntry';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-export default function ScoreDialog({ match, tournamentId, onClose, onSaved }) {
+export default function ScoreDialog({ match, tournamentId, onClose, onSaved, onEmergencySaved }) {
   const [home, setHome] = useState(match.home_score ?? '');
   const [away, setAway] = useState(match.away_score ?? '');
   const [error, setError] = useState('');
   const client = useQueryClient();
   const save = useMutation({
-    mutationFn: () => updateMatch(match.id, { home_score: Number(home), away_score: Number(away), status: 'finalizado' }, match),
+    mutationFn: async () => {
+      const data = { home_score: Number(home), away_score: Number(away), status: 'finalizado' };
+      try {
+        return await updateMatch(match.id, data, match);
+      } catch (error) {
+        if (!isQuotaError(error)) throw error;
+        saveEmergencyResult(tournamentId, match, data);
+        return { savedLocally: true };
+      }
+    },
     onSuccess: (result) => {
       client.setQueryData(['matches', tournamentId], (current) => Array.isArray(current) ? current.map((item) => item.id === match.id ? { ...item, home_score: Number(home), away_score: Number(away), status: 'finalizado' } : item) : current);
-      client.invalidateQueries({ queryKey: ['matches', tournamentId] });
+      if (!result?.savedLocally) client.invalidateQueries({ queryKey: ['matches', tournamentId] });
       const pending = result?.playoffRefreshPending || result?.advancementPending;
-      onSaved(pending ? 'Resultado guardado. La actualización automática de los cruces queda pendiente hasta que vuelva la cuota.' : 'Resultado guardado. Las posiciones se actualizaron.');
+      if (result?.savedLocally) {
+        onEmergencySaved?.();
+        onSaved('Resultado guardado en modo emergencia y contabilizado en este dispositivo. Sincronizalo cuando vuelva la cuota.');
+      } else {
+        onSaved(pending ? 'Resultado guardado. La actualización automática de los cruces queda pendiente hasta que vuelva la cuota.' : 'Resultado guardado. Las posiciones se actualizaron.');
+      }
       onClose();
     },
   });

@@ -17,7 +17,7 @@ import { refreshPlayoffQualifications } from './playoffService';
 import { validateScore } from '../lib/tournamentEntry';
 
 const collectionName = "matches";
-const isQuotaError = (error) => error?.code === 'resource-exhausted' || /quota|resource.exhausted/i.test(error?.message || '');
+export const isQuotaError = (error) => error?.code === 'resource-exhausted' || /quota|resource.exhausted/i.test(error?.message || '');
 const isScoreOnlyUpdate = (data) => Object.keys(data).every((key) => ['home_score', 'away_score', 'status'].includes(key));
 
 export const createMatch = async (match) => {

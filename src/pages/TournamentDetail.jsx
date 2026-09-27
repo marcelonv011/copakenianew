@@ -12,6 +12,7 @@ import {
 import {
   getMatchesByTournament,
   createMatch,
+  isQuotaError,
   updateMatch,
   deleteMatch as deleteMatchById,
 } from '@/services/matchService';
@@ -64,6 +65,7 @@ import { playoffFormat } from '@/lib/playoffs';
 import TeamEnrollment from '@/components/tournament/TeamEnrollment';
 import ScoreDialog from '@/components/tournament/ScoreDialog';
 import { validateScore } from '@/lib/tournamentEntry';
+import { getEmergencyResults, mergeEmergencyResults, removeEmergencyResult } from '@/lib/emergencyResults';
 
 export default function TournamentDetail() {
   const { id } = useParams();
@@ -75,6 +77,7 @@ export default function TournamentDetail() {
   const [editingMatch, setEditingMatch] = useState(null);
   const [scoreMatch, setScoreMatch] = useState(null);
   const [notice, setNotice] = useState('');
+  const [emergencyVersion, setEmergencyVersion] = useState(0);
 
   const [groupDialog, setGroupDialog] = useState(false);
   const [groupCount, setGroupCount] = useState(1);
@@ -98,11 +101,14 @@ export default function TournamentDetail() {
     queryFn: () => getTournamentById(id),
   });
 
-  const { data: matches = [] } = useQuery({
+  const { data: remoteMatches = [] } = useQuery({
     queryKey: ['matches', id],
     queryFn: () => getMatchesByTournament(id),
     initialData: [],
   });
+
+  const emergencyResults = useMemo(() => getEmergencyResults(id), [id, emergencyVersion]);
+  const matches = useMemo(() => mergeEmergencyResults(remoteMatches, emergencyResults), [remoteMatches, emergencyResults]);
 
   const { data: allTeams = [] } = useQuery({
     queryKey: ['teams'],
@@ -201,6 +207,23 @@ export default function TournamentDetail() {
     mutationFn: (teamId) => removeTournamentTeam(id, teamId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['tournament', id] }),
+  });
+
+  const syncEmergency = useMutation({
+    mutationFn: async () => {
+      const entries = getEmergencyResults(id);
+      for (const entry of entries) {
+        await updateMatch(entry.match.id, entry.data, entry.match);
+        removeEmergencyResult(id, entry.match.id);
+      }
+      return entries.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['matches', id] });
+      setNotice(`${count} resultado${count === 1 ? '' : 's'} de emergencia sincronizado${count === 1 ? '' : 's'} con Firebase.`);
+    },
+    onError: (error) => setNotice(isQuotaError(error) ? 'Firebase todavía no tiene cuota. Los resultados permanecen guardados y contabilizados en este dispositivo.' : error.message),
+    onSettled: () => setEmergencyVersion((version) => version + 1),
   });
 
   const resetMatchForm = () =>
@@ -376,6 +399,12 @@ export default function TournamentDetail() {
           )}
         </div>
       </div>
+
+      {isAdmin && emergencyResults.length > 0 && <div className='mb-6 rounded-xl border border-amber-400/50 bg-amber-400/10 p-4 space-y-3'>
+        <p className='font-bold'>Modo emergencia activo · {emergencyResults.length} resultado{emergencyResults.length === 1 ? '' : 's'} pendiente{emergencyResults.length === 1 ? '' : 's'}</p>
+        <p className='text-sm text-muted-foreground'>Estos marcadores ya se contabilizan en las posiciones de este dispositivo. No cierres ni borres los datos del navegador hasta sincronizarlos.</p>
+        <Button disabled={syncEmergency.isPending} onClick={() => syncEmergency.mutate()}>{syncEmergency.isPending ? 'Sincronizando…' : `Sincronizar ${emergencyResults.length} resultado${emergencyResults.length === 1 ? '' : 's'}`}</Button>
+      </div>}
 
       <Tabs defaultValue='fixture' className='space-y-6'>
         <Button asChild variant='outline'><Link to={`/cartelera/${id}`}>Ver cartelera · Imagen y QR</Link></Button>
@@ -623,7 +652,7 @@ export default function TournamentDetail() {
         </TabsContent>
       </Tabs>
       {notice && <p role='status' className='rounded-xl border border-border bg-card p-3 mt-4'>{notice}</p>}
-      {scoreMatch && isAdmin && <ScoreDialog key={scoreMatch.id} match={scoreMatch} tournamentId={id} onClose={() => setScoreMatch(null)} onSaved={setNotice} />}
+      {scoreMatch && isAdmin && <ScoreDialog key={scoreMatch.id} match={scoreMatch} tournamentId={id} onClose={() => setScoreMatch(null)} onSaved={setNotice} onEmergencySaved={() => setEmergencyVersion((version) => version + 1)} />}
 
       <Dialog open={groupDialog} onOpenChange={setGroupDialog}>
         <DialogContent className='bg-card border-border max-w-sm'>
