@@ -12,10 +12,12 @@ export default function ScoreDialog({ match, tournamentId, onClose, onSaved }) {
   const [error, setError] = useState('');
   const client = useQueryClient();
   const save = useMutation({
-    mutationFn: () => updateMatch(match.id, { home_score: Number(home), away_score: Number(away), status: 'finalizado' }),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: ['matches', tournamentId] });
-      onSaved('Resultado guardado. Las posiciones se actualizaron.');
+    mutationFn: () => updateMatch(match.id, { home_score: Number(home), away_score: Number(away), status: 'finalizado' }, match),
+    onSuccess: (result) => {
+      client.setQueryData(['matches', tournamentId], (current) => Array.isArray(current) ? current.map((item) => item.id === match.id ? { ...item, home_score: Number(home), away_score: Number(away), status: 'finalizado' } : item) : current);
+      client.invalidateQueries({ queryKey: ['matches', tournamentId] });
+      const pending = result?.playoffRefreshPending || result?.advancementPending;
+      onSaved(pending ? 'Resultado guardado. La actualización automática de los cruces queda pendiente hasta que vuelva la cuota.' : 'Resultado guardado. Las posiciones se actualizaron.');
       onClose();
     },
   });

@@ -180,7 +180,7 @@ export default function TournamentDetail() {
       };
 
       return editingMatch
-        ? updateMatch(editingMatch.id, payload)
+        ? updateMatch(editingMatch.id, payload, editingMatch)
         : createMatch(payload);
     },
     onSuccess: () => {

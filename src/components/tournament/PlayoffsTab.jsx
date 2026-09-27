@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -198,7 +198,7 @@ export default function PlayoffsTab({
         home_score: data.home_score !== "" ? Number(data.home_score) : null,
         away_score: data.away_score !== "" ? Number(data.away_score) : null,
       };
-      return editing ? updateMatch(editing.id, payload) : createMatch(payload);
+      return editing ? updateMatch(editing.id, payload, editing) : createMatch(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["matches", tournamentId] });
