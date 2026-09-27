@@ -93,7 +93,7 @@ export function GoldChampionPoster({ tournament, matches }) {
     <TournamentLogo tournament={tournament} x={42} y={38} size={128} />
     <text x='540' y='58' fill='#fae8f5' fontSize='15' textAnchor='middle' letterSpacing='3'>TORNEO INTERNACIONAL FEMENINO</text>
     <ArtText text={tournament.name.replace(/ Femenino/i, '').toUpperCase()} x={540} y={107} max={30} size={31} anchor='middle' />
-    <text x='540' y='157' fill='#dce6ff' fontSize='23' textAnchor='middle' fontWeight='700' letterSpacing='4'>{tournament.category}</text>
+    <text x='540' y='174' fill='#ffffff' fontSize='46' className='poster-title' textAnchor='middle' fontWeight='600' letterSpacing='5'>{tournament.category}</text>
 
     <path d='M 104 229 H 338 M 742 229 H 976' stroke='#f8d870' strokeWidth='2' opacity='.75' />
     <text x='540' y='245' fill={`url(#${id}-gold)`} fontSize='35' className='poster-title' fontWeight='600' textAnchor='middle' letterSpacing='7'>COPA ORO</text>
