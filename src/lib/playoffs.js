@@ -103,7 +103,8 @@ export function planPlayoffs(tournament, matches, teams) {
 }
 
 export function qualificationUpdates(tournament, matches, teams) {
-  const seededMatches = matches.filter((match) => match.playoff_slot && (match.home_seed || match.away_seed));
+  const category = playoffFormat(tournament.id);
+  const seededMatches = matches.filter((match) => match.playoff_slot && !match.source_match_ids?.length);
   if (!seededMatches.length) return [];
   const groupMatches = matches.filter((match) => match.phase === 'grupos');
   const groups = calculateStandingsByGroup(groupMatches, teams.filter((team) => tournament.team_ids?.includes(team.id)), tournament.group_config?.groupNames || ['Zona A']).filter((group) => group.standings.length);
@@ -116,10 +117,26 @@ export function qualificationUpdates(tournament, matches, teams) {
     }
   }
   const standings = Object.fromEntries(groups.map((group) => [group.groupName, group.standings]));
+  const inferredSeed = (match, side) => {
+    if (category === 'U13' && match.phase === 'final') {
+      const cupIndex = CUPS.indexOf(match.cup);
+      return cupIndex < 0 ? null : { group: groups[0]?.groupName, position: cupIndex * 2 + (side === 'away' ? 1 : 0) };
+    }
+    if (category !== 'U13' && match.phase === 'semifinal' && ['oro', 'plata'].includes(match.cup)) {
+      const position = (match.cup === 'oro' ? 0 : 2);
+      const secondSemi = match.playoff_slot.endsWith('_2');
+      const groupIndex = secondSemi ? (side === 'home' ? 1 : 0) : (side === 'home' ? 0 : 1);
+      return { group: groups[groupIndex]?.groupName, position: position + (side === 'home' ? (secondSemi ? 0 : 0) : 1) };
+    }
+    if (category !== 'U13' && match.cup === 'bronce' && match.phase === 'final') {
+      return { group: groups[side === 'home' ? 0 : 1]?.groupName, position: 4 };
+    }
+    return null;
+  };
   return seededMatches.flatMap((match) => {
     const fields = {};
     for (const side of ['home', 'away']) {
-      const source = match[`${side}_seed`];
+      const source = match[`${side}_seed`] || inferredSeed(match, side);
       if (!match[`${side}_team_id`] && source) Object.assign(fields, teamFields(side, standings[source.group]?.[source.position]));
     }
     if (!Object.keys(fields).length) return [];

@@ -52,6 +52,18 @@ test('confirma automáticamente los equipos pendientes al cargar el último resu
   assert.ok(updates.length > 0);
   assert.ok(updates.every((update) => update.home_team_id || update.away_team_id));
 });
+test('actualiza cuadros anteriores que no guardaron el origen de la posición', () => {
+  const { tournament, matches, teams } = fixture(1);
+  const planned = planPlayoffs(tournament, matches.slice(1), teams).map((match) => {
+    const legacy = { ...match };
+    delete legacy.home_seed;
+    delete legacy.away_seed;
+    return legacy;
+  });
+  const updates = qualificationUpdates(tournament, [...matches, ...planned], teams);
+  assert.ok(updates.length > 0);
+  assert.ok(updates.every((update) => update.home_team_id || update.away_team_id));
+});
 test('avanzan ganadores a la final y perdedores al tercer puesto', () => {
   const { tournament, matches, teams } = fixture(1);
   const planned = planPlayoffs(tournament, matches, teams);

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CUPS, planPlacementMatches, planPlayoffs } from '@/lib/playoffs';
-import { addPlacementMatches, generatePlayoffs } from '@/services/playoffService';
+import { addPlacementMatches, generatePlayoffs, refreshPlayoffQualifications } from '@/services/playoffService';
 import { Button } from '@/components/ui/button';
 import PlayoffImage from './PlayoffImage';
 
@@ -9,6 +9,7 @@ export default function CupPlayoffs({ tournament, matches, teams, onEdit, onScor
   const client = useQueryClient();
   const [notice, setNotice] = useState('');
   const generated = matches.filter((m) => m.playoff_slot);
+  const pendingSeeds = generated.some((match) => !match.source_match_ids?.length && (!match.home_team_id || !match.away_team_id));
   const missingPlacements = generated.length ? planPlacementMatches(tournament, generated) : [];
   let reason = '';
   let pendingQualification = false;
@@ -32,6 +33,13 @@ export default function CupPlayoffs({ tournament, matches, teams, onEdit, onScor
       setNotice('Partidos por el 3.º y 4.º puesto agregados a Copa Oro y Copa Plata.');
     },
   });
+  const refreshQualifications = useMutation({
+    mutationFn: () => refreshPlayoffQualifications(tournament.id),
+    onSuccess: async (updates) => {
+      await client.invalidateQueries({ queryKey: ['matches', tournament.id] });
+      setNotice(updates.length ? 'Equipos confirmados y cruces actualizados según las posiciones finales.' : 'No quedan equipos por actualizar.');
+    },
+  });
   return <div className='space-y-6'>
     {!generated.length && <div className='rounded-xl border border-border p-5 space-y-3'>
       <h2 className='font-bold text-xl'>Generar cruces de oro, plata y bronce</h2>
@@ -43,6 +51,11 @@ export default function CupPlayoffs({ tournament, matches, teams, onEdit, onScor
     </div>}
     {(generate.isError || notice) && <p role={generate.isError ? 'alert' : 'status'}>{generate.error?.message || notice}</p>}
     {generated.length > 0 && <>
+      {pendingSeeds && <div className='rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-2'>
+        <p>Si ya terminó la fase regular, actualizá los casilleros que todavía dicen “Resta confirmar”.</p>
+        <Button disabled={refreshQualifications.isPending} onClick={() => refreshQualifications.mutate()}>{refreshQualifications.isPending ? 'Actualizando…' : 'Actualizar equipos confirmados'}</Button>
+        {refreshQualifications.isError && <p role='alert'>{refreshQualifications.error?.message}</p>}
+      </div>}
       {missingPlacements.length > 0 && <div className='rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-2'>
         <p>Este cuadro fue generado antes de incorporar los partidos por el 3.º y 4.º puesto.</p>
         <Button disabled={addPlacements.isPending} onClick={() => addPlacements.mutate()}>{addPlacements.isPending ? 'Agregando…' : 'Agregar 3.º y 4.º puesto'}</Button>

@@ -12,24 +12,11 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebase/config";
-import { advancementUpdates, qualificationUpdates } from '../lib/playoffs';
+import { advancementUpdates } from '../lib/playoffs';
+import { refreshPlayoffQualifications } from './playoffService';
 import { validateScore } from '../lib/tournamentEntry';
 
 const collectionName = "matches";
-
-async function refreshPendingQualifications(tournamentId) {
-  const tournamentSnapshot = await getDoc(doc(db, 'tournaments', tournamentId));
-  if (!tournamentSnapshot.exists() || !tournamentSnapshot.data().playoff_match_ids?.length) return;
-  const tournament = { ...tournamentSnapshot.data(), id: tournamentId };
-  const [matchSnapshots, teamSnapshots] = await Promise.all([
-    getDocs(query(collection(db, collectionName), where('tournament_id', '==', tournamentId))),
-    Promise.all((tournament.team_ids || []).map((teamId) => getDoc(doc(db, 'teams', teamId)))),
-  ]);
-  const matches = matchSnapshots.docs.map((match) => ({ ...match.data(), id: match.id }));
-  const teams = teamSnapshots.filter((team) => team.exists()).map((team) => ({ ...team.data(), id: team.id }));
-  const updates = qualificationUpdates(tournament, matches, teams);
-  await Promise.all(updates.map(({ id, ...fields }) => updateDoc(doc(db, collectionName, id), fields)));
-}
 
 export const createMatch = async (match) => {
   return await addDoc(collection(db, collectionName), match);
@@ -40,7 +27,7 @@ export const updateMatch = async (id, data) => {
   const snapshot = await getDoc(ref);
   if (!snapshot.data()?.playoff_slot) {
     await updateDoc(ref, data);
-    if (snapshot.data()?.phase === 'grupos' && data.status === 'finalizado') await refreshPendingQualifications(snapshot.data().tournament_id);
+    if (snapshot.data()?.phase === 'grupos' && data.status === 'finalizado') await refreshPlayoffQualifications(snapshot.data().tournament_id);
     return;
   }
   return runTransaction(db, async (transaction) => {

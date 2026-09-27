@@ -1,6 +1,21 @@
-import { collection, doc, getDocs, query, runTransaction, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, runTransaction, updateDoc, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
-import { planPlacementMatches, planPlayoffs } from '@/lib/playoffs';
+import { planPlacementMatches, planPlayoffs, qualificationUpdates } from '@/lib/playoffs';
+
+export async function refreshPlayoffQualifications(tournamentId) {
+  const tournamentSnapshot = await getDoc(doc(db, 'tournaments', tournamentId));
+  if (!tournamentSnapshot.exists()) throw new Error('No se encontró el torneo.');
+  const tournament = { ...tournamentSnapshot.data(), id: tournamentId };
+  const [matchSnapshots, teamSnapshots] = await Promise.all([
+    getDocs(query(collection(db, 'matches'), where('tournament_id', '==', tournamentId))),
+    Promise.all((tournament.team_ids || []).map((teamId) => getDoc(doc(db, 'teams', teamId)))),
+  ]);
+  const matches = matchSnapshots.docs.map((match) => ({ ...match.data(), id: match.id }));
+  const teams = teamSnapshots.filter((team) => team.exists()).map((team) => ({ ...team.data(), id: team.id }));
+  const updates = qualificationUpdates(tournament, matches, teams);
+  await Promise.all(updates.map(({ id, ...fields }) => updateDoc(doc(db, 'matches', id), fields)));
+  return updates;
+}
 
 export async function generatePlayoffs(tournamentId) {
   const knownMatches = await getDocs(query(collection(db, 'matches'), where('tournament_id', '==', tournamentId)));
