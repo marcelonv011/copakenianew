@@ -10,7 +10,7 @@ export function ArtText({ text, x, y, size = 22, max = 26, anchor = 'start', col
 export function TournamentLogo({ tournament, x, y, size }) {
   return <image href={/kenia/i.test(tournament.name || '') ? '/images/copa-kenia-logo.png' : '/images/copa-comercial-eldorado-logo.png'} x={x} y={y} width={size} height={size} preserveAspectRatio='xMidYMid meet' />;
 }
-function EdgeTransparentLogo({ href, ...props }) {
+export function EdgeTransparentLogo({ href, ...props }) {
   const [processed, setProcessed] = useState({ original: '', value: '' });
   useEffect(() => {
     let active = true;
@@ -46,7 +46,7 @@ export function BracketCard({ match, x, y, width = 410, height = 166, label, col
       const name = match?.[`${side}_team_id`] ? match[`${side}_team_name`] : `${isThirdPlace(match) ? 'Perdedor' : 'Ganador'} semifinal ${i + 1}`;
       return <g key={side}>
         {!match?.[`${side}_team_logo`] && <text x={x + 32} y={y + 37 + i * row} fill='#a6bce5' textAnchor='middle' fontSize={size}>{match?.[`${side}_team_id`] ? name[0] : '?'}</text>}
-        {match?.[`${side}_team_logo`] && <image href={match[`${side}_team_logo`]} x={x + 12} y={y + 12 + i * row} width='42' height='42' preserveAspectRatio='xMidYMid meet' />}
+        {match?.[`${side}_team_logo`] && <EdgeTransparentLogo href={match[`${side}_team_logo`]} x={x + 12} y={y + 12 + i * row} width='42' height='42' preserveAspectRatio='xMidYMid meet' />}
         <ArtText text={name} anchor={centered ? 'middle' : 'start'} x={centered ? x + (width + 17) / 2 : x + 65} y={y + (centered && textLines(name, Math.floor((width - 113) / (size * .56))).length === 1 ? 38 : 27) + i * row} size={size} max={Math.floor((width - 113) / (size * .56))} color={win?.id && win.id === match?.[`${side}_team_id`] ? '#63f2ba' : 'white'} />
         <text x={x + width - 14} y={y + 39 + i * row} fill={color} textAnchor='end' fontSize={size + 6} className='poster-title' fontWeight='600'>{match?.status === 'finalizado' ? match[`${side}_score`] : ''}</text>
       </g>;

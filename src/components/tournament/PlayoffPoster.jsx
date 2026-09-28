@@ -2,7 +2,7 @@ import PosterTypography from './PosterTypography';
 import { useId } from 'react';
 import { textLines, displayDate } from '@/lib/poster';
 import { CUPS, winnerOf } from '@/lib/playoffs';
-import InstagramBracket, { TournamentLogo, ArtBackground } from './PlayoffArt';
+import InstagramBracket, { TournamentLogo, ArtBackground, EdgeTransparentLogo } from './PlayoffArt';
 
 function Lines({ value, x, y, size = 22, max = 25, count = 2, fill = 'white', anchor = 'start', centered = false }) {
   const lines = textLines(value, max, count);
@@ -18,7 +18,7 @@ function Game({ match, x, y, label, color }) {
     {['home', 'away'].map((side, index) => <g key={side}>
       <circle cx={x + 32} cy={y + 36 + index * 61} r='21' fill='#263667' />
       <text x={x + 32} y={y + 43 + index * 61} textAnchor='middle' fill='white' fontSize='18'>{match?.[`${side}_team_name`]?.[0] || '?'}</text>
-      {match?.[`${side}_team_logo`] && <image href={match[`${side}_team_logo`]} x={x + 11} y={y + 15 + index * 61} width='42' height='42' />}
+      {match?.[`${side}_team_logo`] && <EdgeTransparentLogo href={match[`${side}_team_logo`]} x={x + 11} y={y + 15 + index * 61} width='42' height='42' preserveAspectRatio='xMidYMid meet' />}
       <Lines value={match?.[`${side}_team_id`] ? match[`${side}_team_name`] : `${pendingLabel}${match?.source_match_ids?.length ? ` ${index + 1}` : ''}`} x={x + 64} y={y + 28 + index * 61} size={19} max={24} fill={win?.id && win.id === match?.[`${side}_team_id`] ? '#52f0ad' : 'white'} />
       <text x={x + 389} y={y + 38 + index * 61} textAnchor='end' fill={color} fontSize='25' fontWeight='800'>{match?.status === 'finalizado' ? match[`${side}_score`] : ''}</text>
     </g>)}
@@ -37,7 +37,7 @@ function CompactGame({ match, x, y, label, color }) {
     {['home', 'away'].map((side, index) => <g key={side}>
       <circle cx={x + 24} cy={y + 24 + index * 39} r='15' fill='#263667' />
       <text x={x + 24} y={y + 30 + index * 39} textAnchor='middle' fill='white' fontSize='14'>{match?.[`${side}_team_name`]?.[0] || '?'}</text>
-      {match?.[`${side}_team_logo`] && <image href={match[`${side}_team_logo`]} x={x + 9} y={y + 9 + index * 39} width='30' height='30' />}
+      {match?.[`${side}_team_logo`] && <EdgeTransparentLogo href={match[`${side}_team_logo`]} x={x + 9} y={y + 9 + index * 39} width='30' height='30' preserveAspectRatio='xMidYMid meet' />}
       <Lines value={match?.[`${side}_team_id`] ? match[`${side}_team_name`] : `${pendingLabel}${match?.source_match_ids?.length ? ` ${index + 1}` : ''}`} x={x + 225} y={y + 29 + index * 39} size={16} max={34} count={2} centered anchor='middle' />
       <text x={x + 432} y={y + 30 + index * 39} textAnchor='end' fill={color} fontSize='19' fontWeight='800'>{match?.status === 'finalizado' ? match[`${side}_score`] : ''}</text>
     </g>)}
