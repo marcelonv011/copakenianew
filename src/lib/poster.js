@@ -45,7 +45,7 @@ function canvasBlob(canvas) {
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('No se pudo generar la imagen PNG.')), 'image/png'));
 }
 
-export function clearEdgeConnectedWhite(data, width, height, threshold = 225) {
+export function clearEdgeConnectedWhite(data, width, height, threshold = 185) {
   const visited = new Uint8Array(width * height);
   const queue = [];
   const isExteriorWhite = (pixel) => {
