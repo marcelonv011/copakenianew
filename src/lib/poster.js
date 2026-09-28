@@ -45,6 +45,89 @@ function canvasBlob(canvas) {
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('No se pudo generar la imagen PNG.')), 'image/png'));
 }
 
+export function clearEdgeConnectedWhite(data, width, height, threshold = 225) {
+  const visited = new Uint8Array(width * height);
+  const queue = [];
+  const isExteriorWhite = (pixel) => {
+    const offset = pixel * 4;
+    if (data[offset + 3] === 0) return false;
+    const red = data[offset];
+    const green = data[offset + 1];
+    const blue = data[offset + 2];
+    return Math.min(red, green, blue) >= threshold && Math.max(red, green, blue) - Math.min(red, green, blue) <= 30;
+  };
+  const enqueue = (pixel) => {
+    if (visited[pixel] || !isExteriorWhite(pixel)) return;
+    visited[pixel] = 1;
+    queue.push(pixel);
+  };
+
+  for (let x = 0; x < width; x += 1) {
+    enqueue(x);
+    enqueue((height - 1) * width + x);
+  }
+  for (let y = 1; y < height - 1; y += 1) {
+    enqueue(y * width);
+    enqueue(y * width + width - 1);
+  }
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const pixel = queue[cursor];
+    const x = pixel % width;
+    const y = Math.floor(pixel / width);
+    data[pixel * 4 + 3] = 0;
+    if (x > 0) enqueue(pixel - 1);
+    if (x + 1 < width) enqueue(pixel + 1);
+    if (y > 0) enqueue(pixel - width);
+    if (y + 1 < height) enqueue(pixel + width);
+  }
+  return data;
+}
+
+async function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function removeEdgeWhiteFromBlob(blob) {
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const source = new Image();
+    await new Promise((resolve, reject) => {
+      source.onload = resolve;
+      source.onerror = reject;
+      source.src = objectUrl;
+    });
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, 1024 / Math.max(source.naturalWidth, source.naturalHeight));
+    canvas.width = Math.max(1, Math.round(source.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(source.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    context.drawImage(source, 0, 0);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+    clearEdgeConnectedWhite(pixels.data, canvas.width, canvas.height);
+    context.putImageData(pixels, 0, 0);
+    return canvas.toDataURL('image/png');
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+const transparentLogoCache = new Map();
+export function removeEdgeWhiteBackground(source) {
+  if (!source) return Promise.resolve(source);
+  if (!transparentLogoCache.has(source)) transparentLogoCache.set(source, fetch(source, { signal: AbortSignal.timeout(5000) })
+    .then((response) => {
+      if (!response.ok) throw new Error('Logo unavailable');
+      return response.blob();
+    })
+    .then(removeEdgeWhiteFromBlob));
+  return transparentLogoCache.get(source);
+}
+
 async function savePosterBlob(blob, filename) {
   const file = new File([blob], filename, { type: 'image/png' });
   const isAppleMobile = /iP(hone|ad|od)/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
@@ -70,18 +153,18 @@ async function savePosterBlob(blob, filename) {
 // External logos may not allow CORS. Export their text fallback instead of failing the poster.
 async function embedImage(image) {
   const href = image.getAttribute('href');
-  if (!href || href.startsWith('data:')) return;
+  const removeWhite = image.getAttribute('data-remove-edge-white') === 'true';
+  if (!href || (href.startsWith('data:') && !removeWhite)) return;
   try {
+    if (removeWhite) {
+      image.setAttribute('href', await removeEdgeWhiteBackground(href));
+      image.removeAttribute('data-remove-edge-white');
+      return;
+    }
     const response = await fetch(href, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) throw new Error('Logo unavailable');
     const blob = await response.blob();
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-    image.setAttribute('href', dataUrl);
+    image.setAttribute('href', await blobToDataUrl(blob));
   } catch {
     image.remove();
   }

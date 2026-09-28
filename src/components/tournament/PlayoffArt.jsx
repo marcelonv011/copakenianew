@@ -1,6 +1,6 @@
 import PosterTypography from './PosterTypography';
-import { useId } from 'react';
-import { textLines, displayDate } from '@/lib/poster';
+import { useEffect, useId, useState } from 'react';
+import { textLines, displayDate, removeEdgeWhiteBackground } from '@/lib/poster';
 import { loserOf, winnerOf } from '@/lib/playoffs';
 import { cupBracket, isThirdPlace, CUP_COLORS } from '@/lib/playoffDisplay';
 
@@ -9,6 +9,18 @@ export function ArtText({ text, x, y, size = 22, max = 26, anchor = 'start', col
 }
 export function TournamentLogo({ tournament, x, y, size }) {
   return <image href={/kenia/i.test(tournament.name || '') ? '/images/copa-kenia-logo.png' : '/images/copa-comercial-eldorado-logo.png'} x={x} y={y} width={size} height={size} preserveAspectRatio='xMidYMid meet' />;
+}
+function EdgeTransparentLogo({ href, ...props }) {
+  const [processed, setProcessed] = useState({ original: '', value: '' });
+  useEffect(() => {
+    let active = true;
+    removeEdgeWhiteBackground(href).then((value) => {
+      if (active) setProcessed({ original: href, value });
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [href]);
+  const cleaned = processed.original === href && processed.value !== href;
+  return <image href={cleaned ? processed.value : href} {...props} data-remove-edge-white={cleaned ? undefined : 'true'} />;
 }
 export function ArtBackground({ id, height = 1350 }) {
   return <>
@@ -77,9 +89,6 @@ export function GoldChampionPoster({ tournament, matches }) {
       <filter id={`${id}-shadow`} x='-30%' y='-30%' width='160%' height='160%'>
         <feDropShadow dx='0' dy='12' stdDeviation='18' floodColor='#000000' floodOpacity='.55' />
       </filter>
-      <filter id={`${id}-remove-white`} colorInterpolationFilters='sRGB'>
-        <feColorMatrix type='matrix' values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  -1 -1 -1 3 0' />
-      </filter>
       <pattern id={`${id}-sparkles`} width='90' height='90' patternUnits='userSpaceOnUse'>
         <circle cx='12' cy='14' r='2' fill='#fff4bd' opacity='.6' />
         <circle cx='68' cy='51' r='1.5' fill='white' opacity='.45' />
@@ -106,7 +115,7 @@ export function GoldChampionPoster({ tournament, matches }) {
       <circle cx='540' cy='650' r='222' fill='#08142c' stroke={`url(#${id}-gold)`} strokeWidth='8' />
       <circle cx='540' cy='650' r='198' fill='#ffffff' fillOpacity='.08' stroke='#fff0aa' strokeOpacity='.28' strokeWidth='2' />
       <text x='540' y='716' fill='#fff0aa' opacity='.55' fontSize='190' textAnchor='middle' className='poster-title' fontWeight='600'>{initial}</text>
-      {champion?.logo && <image href={champion.logo} x='372' y='482' width='336' height='336' preserveAspectRatio='xMidYMid meet' filter={`url(#${id}-remove-white)`} />}
+      {champion?.logo && <EdgeTransparentLogo href={champion.logo} x='372' y='482' width='336' height='336' preserveAspectRatio='xMidYMid meet' />}
     </g>
     <path d='M 390 448 L 425 390 L 483 430 L 540 370 L 597 430 L 655 390 L 690 448 Z' fill={`url(#${id}-gold)`} stroke='#fff1a9' strokeWidth='3' filter={`url(#${id}-shadow)`} />
 
